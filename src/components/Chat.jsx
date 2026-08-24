@@ -14,6 +14,9 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { MessagePair } from "@/components/elements/message-pair";
+import { ChatContainerRoot, ChatContainerContent, ChatContainerScrollAnchor } from "@/components/ui/chat-container";
+import { Message, MessageAvatar, MessageContent } from "@/components/ui/message";
+import { PromptInput, PromptInputTextarea, PromptInputActions, PromptInputAction } from "@/components/ui/prompt-input";
 
 const generateId = () => {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
@@ -209,7 +212,8 @@ export default function Chat() {
       <main className="flex-1 flex flex-col h-full relative overflow-hidden bg-gradient-to-b from-[#09090b] to-[#000000]">
         
         {/* Messages Feed */}
-        <div className="flex-1 overflow-y-auto px-4 md:px-8 pt-8 pb-32 space-y-12 scroll-smooth custom-scrollbar">
+        <ChatContainerRoot className="flex-1 overflow-y-auto px-4 md:px-8 pt-8 pb-32 space-y-12 scroll-smooth custom-scrollbar">
+          <ChatContainerContent>
           {groupedMessages.length === 0 && (
             <motion.div 
               initial={{ opacity: 0, y: 10 }}
@@ -364,37 +368,44 @@ export default function Chat() {
               );
             })}
           </AnimatePresence>
-          <div ref={messagesEndRef} className="h-4" />
-        </div>
+          <ChatContainerScrollAnchor ref={messagesEndRef} className="h-4" />
+          </ChatContainerContent>
+        </ChatContainerRoot>
 
-        {/* Floating Minimal Input Bar */}
-        <div className="absolute bottom-6 left-0 right-0 px-4 flex justify-center pointer-events-none z-10">
-          <motion.form 
+        {/* Floating Minimal Input Bar (Prompt-Kit) */}
+        <div className="absolute bottom-6 left-0 right-0 px-4 flex justify-center z-10">
+          <motion.div 
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.2, duration: 0.5, ease: "easeOut" }}
-            onSubmit={handleSubmit} 
-            className="w-full max-w-3xl relative flex items-center pointer-events-auto group"
+            className="w-full max-w-3xl relative"
           >
-            <div className="absolute inset-0 bg-white/5 rounded-full blur-xl transition-opacity group-focus-within:bg-white/10 opacity-50" />
+            <div className="absolute inset-0 bg-white/5 rounded-full blur-xl transition-opacity opacity-50" />
             
-            <input
-              type="text"
+            <PromptInput
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              onValueChange={setInput}
+              onSubmit={handleSubmit}
               disabled={isProcessing}
-              placeholder={isProcessing ? "Agent is processing..." : "Ask the agent anything..."}
-              className="w-full bg-[#09090b]/80 backdrop-blur-2xl border border-white/10 text-zinc-100 text-xs md:text-sm rounded-full py-3 md:py-4 pl-4 md:pl-6 pr-12 md:pr-14 focus:outline-none focus:border-white/20 transition-all placeholder:text-zinc-600 shadow-2xl shadow-black/50 disabled:opacity-50"
-            />
-            
-            <button 
-              type="submit"
-              disabled={!input.trim() || isProcessing}
-              className="absolute right-2.5 p-2 bg-white text-zinc-900 hover:bg-zinc-200 disabled:bg-zinc-800 disabled:text-zinc-600 rounded-full transition-colors flex items-center justify-center focus:outline-none shadow-sm disabled:shadow-none"
+              className="bg-[#09090b]/80 backdrop-blur-2xl border-white/10 shadow-2xl shadow-black/50 text-zinc-100 rounded-full pl-6 pr-2 py-2 flex items-center"
             >
-              <Send className="w-4 h-4 ml-0.5" />
-            </button>
-          </motion.form>
+              <PromptInputTextarea 
+                placeholder={isProcessing ? "Agent is processing..." : "Ask the agent anything..."} 
+                className="text-xs md:text-sm !h-auto placeholder:text-zinc-600 focus:outline-none"
+              />
+              <PromptInputActions className="ml-2 mr-1">
+                <PromptInputAction tooltip="Send Message">
+                  <button 
+                    onClick={handleSubmit}
+                    disabled={!input.trim() || isProcessing}
+                    className="p-3 rounded-full bg-white text-zinc-900 hover:bg-zinc-200 disabled:bg-zinc-800 disabled:text-zinc-600 transition-colors flex items-center justify-center focus:outline-none shadow-sm disabled:shadow-none shrink-0"
+                  >
+                    <Send className="w-4 h-4 ml-0.5" />
+                  </button>
+                </PromptInputAction>
+              </PromptInputActions>
+            </PromptInput>
+          </motion.div>
         </div>
 
       </main>
