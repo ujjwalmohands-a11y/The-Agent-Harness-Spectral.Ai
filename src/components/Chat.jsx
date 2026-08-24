@@ -1,6 +1,19 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Check, Volume2, Square } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  ShieldAlert, 
+  Database, 
+  Terminal, 
+  Play, 
+  CheckCircle2, 
+  XCircle, 
+  Cpu, 
+  Send,
+  Sparkles,
+  ChevronRight
+} from 'lucide-react';
+import { MessagePair } from "@/components/elements/message-pair";
 
 const generateId = () => {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
@@ -14,41 +27,24 @@ export default function Chat() {
   const [input, setInput] = useState('');
   const [sessionId] = useState(() => generateId());
   const [isProcessing, setIsProcessing] = useState(false);
-  const [speakingMessageId, setSpeakingMessageId] = useState(null);
-  const endOfMessagesRef = useRef(null);
+  const [expandedTraces, setExpandedTraces] = useState({});
+  const messagesEndRef = useRef(null);
+  
   const location = useLocation();
   const initialPrompt = location.state?.initialPrompt;
   const hasInitialized = useRef(false);
 
-  useEffect(() => {
-    return () => {
-      if (window.speechSynthesis) {
-        window.speechSynthesis.cancel();
-      }
-    };
-  }, []);
-
-  const speakMessage = (id, text) => {
-    if (!window.speechSynthesis) return;
-    window.speechSynthesis.cancel(); // Stop any current speech
-    
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.onend = () => setSpeakingMessageId(null);
-    utterance.onerror = () => setSpeakingMessageId(null);
-    
-    setSpeakingMessageId(id);
-    window.speechSynthesis.speak(utterance);
-  };
-
-  const cancelSpeech = () => {
-    if (!window.speechSynthesis) return;
-    window.speechSynthesis.cancel();
-    setSpeakingMessageId(null);
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
   useEffect(() => {
-    endOfMessagesRef.current?.scrollIntoView({ behavior: 'smooth' });
+    scrollToBottom();
   }, [messages]);
+
+  const toggleTrace = (id) => {
+    setExpandedTraces(prev => ({ ...prev, [id]: !prev[id] }));
+  };
 
   const handleApproval = async (id, approved) => {
     setMessages((prev) =>
@@ -57,7 +53,6 @@ export default function Chat() {
       )
     );
 
-    // Add confirmation trace
     const statusText = approved ? 'Approved by you' : 'Rejected by you';
     setMessages(prev => [
       ...prev,
@@ -66,7 +61,6 @@ export default function Chat() {
 
     await sendRequest({ approvalId: id, approved });
   };
-
 
   const sendRequest = async (payload) => {
     setIsProcessing(true);
@@ -115,20 +109,16 @@ export default function Chat() {
 
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split('\n');
-
         buffer = lines.pop() || '';
-
         for (const rawLine of lines) {
           processLine(rawLine);
         }
       }
-
       if (buffer.trim()) {
         processLine(buffer);
       }
     } catch (error) {
       console.error('Fetch error:', error);
-      // Let's add an error trace instead of a big bubble
       setMessages((prev) => [
         ...prev,
         {
@@ -155,13 +145,12 @@ export default function Chat() {
     if (initialPrompt && !hasInitialized.current) {
       hasInitialized.current = true;
       submitMessage(initialPrompt);
-      // Clean up state so refresh doesn't resubmit
       window.history.replaceState({}, document.title);
     }
   }, [initialPrompt]);
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     if (!input.trim() || isProcessing) return;
 
     const textPayload = input.trim();
@@ -169,138 +158,263 @@ export default function Chat() {
     await submitMessage(textPayload);
   };
 
+  const getToolIcon = (content) => {
+    const text = (content || '').toLowerCase();
+    if (text.includes('database') || text.includes('sql')) return <Database className="w-4 h-4 text-zinc-400" />;
+    if (text.includes('terminal') || text.includes('build') || text.includes('run')) return <Terminal className="w-4 h-4 text-zinc-400" />;
+    return <Play className="w-4 h-4 text-zinc-400" />;
+  };
+
+  // Group messages into pairs (User Msg -> Agent Msgs)
+  const groupedMessages = [];
+  let currentGroup = null;
+
+  messages.forEach(msg => {
+    if (msg.role === 'user') {
+      if (currentGroup) groupedMessages.push(currentGroup);
+      currentGroup = { userMsg: msg, agentResponses: [] };
+    } else {
+      if (!currentGroup) currentGroup = { userMsg: null, agentResponses: [] };
+      currentGroup.agentResponses.push(msg);
+    }
+  });
+  if (currentGroup) groupedMessages.push(currentGroup);
+
   return (
-    <div className="min-h-screen bg-white text-gray-700 font-mono p-4 md:p-8 flex flex-col items-center">
-      <div className="w-full max-w-4xl border border-gray-200 rounded-sm overflow-hidden flex flex-col bg-white shadow-sm">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-          <div className="flex items-center gap-3">
-            <div className="w-2 h-2 bg-black rounded-sm"></div>
-            <span className="text-[11px] text-gray-600 uppercase tracking-widest font-semibold">A TrueForge Session</span>
+    <div className="flex h-screen bg-[#09090b] text-zinc-100 font-sans selection:bg-white/20">
+      
+      {/* Sleek Minimal Sidebar */}
+      <aside className="w-64 border-r border-white/5 flex-col hidden md:flex bg-[#09090b]">
+        <div className="p-6 flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center border border-white/10 shadow-sm">
+            <Sparkles className="w-4 h-4 text-zinc-200" />
           </div>
-          <div className="border border-gray-200 px-3 py-1 text-[10px] text-gray-500 uppercase tracking-widest bg-gray-50">
-            Session ID {sessionId}
-          </div>
+          <h1 className="font-medium text-sm tracking-wide text-zinc-200">Workspace</h1>
         </div>
+        <nav className="flex-1 px-4">
+          <ul className="space-y-1 text-sm text-zinc-400">
+            <li className="flex items-center gap-2 p-2.5 rounded-lg cursor-pointer transition-colors bg-white/5 text-zinc-200 font-medium">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              Session {sessionId.substring(0,6)}
+            </li>
+            <li className="flex items-center gap-2 p-2.5 rounded-lg cursor-pointer hover:bg-white/5 hover:text-zinc-200 transition-colors">
+              <div className="w-1.5 h-1.5 rounded-full bg-transparent border border-zinc-600" />
+              Past Threads
+            </li>
+          </ul>
+        </nav>
+      </aside>
 
-        {/* Chat Area */}
-        <div className="flex-1 p-6 space-y-5 min-h-[60vh] max-h-[75vh] overflow-y-auto">
-          {messages.length === 0 && (
-            <div className="text-gray-600 text-sm flex gap-3">
-              <span className="text-gray-400">&gt;</span>
-              <span>Waiting for instructions...</span>
-            </div>
+      {/* Main Content */}
+      <main className="flex-1 flex flex-col h-full relative overflow-hidden bg-gradient-to-b from-[#09090b] to-[#000000]">
+        
+        {/* Messages Feed */}
+        <div className="flex-1 overflow-y-auto px-4 md:px-8 pt-8 pb-32 space-y-12 scroll-smooth custom-scrollbar">
+          {groupedMessages.length === 0 && (
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+              className="h-full flex flex-col items-center justify-center text-zinc-500"
+            >
+              <div className="w-16 h-16 rounded-2xl bg-white/[0.03] border border-white/10 flex items-center justify-center mb-6 shadow-2xl backdrop-blur-sm">
+                <Sparkles className="w-7 h-7 text-zinc-400" />
+              </div>
+              <h2 className="text-lg md:text-xl font-medium text-zinc-200 mb-2">How can I help you today?</h2>
+              <p className="text-xs md:text-sm">Enter a prompt to initialize the agent.</p>
+            </motion.div>
           )}
-          {messages.map((msg) => (
-            <MessageRow 
-              key={msg.id} 
-              msg={msg} 
-              onApprove={handleApproval} 
-              onSpeak={speakMessage}
-              onStopSpeak={cancelSpeech}
-              isSpeaking={speakingMessageId === msg.id}
-            />
-          ))}
-          <div ref={endOfMessagesRef} />
+
+          <AnimatePresence initial={false}>
+            {groupedMessages.map((group, idx) => {
+              const userText = group.userMsg ? group.userMsg.content : "";
+              const textResponses = group.agentResponses.filter(r => r.type === 'text');
+              const combinedText = textResponses.map(r => r.content).join('\n\n');
+              const words = combinedText.split(/\s+/).filter(w => w.length > 0);
+              const isGroupStreaming = isProcessing && idx === groupedMessages.length - 1;
+              const tracesAndApprovals = group.agentResponses.filter(r => r.type !== 'text');
+
+              return (
+                <motion.div 
+                  key={group.userMsg ? group.userMsg.id : `group-${idx}`}
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
+                  className="w-full max-w-4xl mx-auto flex flex-col"
+                >
+                  {/* Assistant UI Message Pair */}
+                  {(userText || words.length > 0) && (
+                    <div className="mb-4">
+                      <MessagePair 
+                        userMessage={userText}
+                        words={words}
+                        visibleWords={words.length}
+                        streaming={isGroupStreaming && words.length > 0}
+                      />
+                    </div>
+                  )}
+
+                  {/* Render Traces and Approvals underneath the message pair */}
+                  {tracesAndApprovals.length > 0 && (
+                    <div className="flex flex-col gap-3 pl-4 border-l border-white/10 ml-2 mt-2">
+                      {tracesAndApprovals.map((msg) => {
+                        const isExpanded = expandedTraces[msg.id];
+
+                        if (msg.type === 'trace') {
+                          return (
+                            <div key={msg.id} className="w-full max-w-2xl bg-transparent border border-white/10 rounded-xl overflow-hidden backdrop-blur-md">
+                              <button 
+                                onClick={() => toggleTrace(msg.id)}
+                                className="w-full flex items-center justify-between px-4 py-3 bg-white/[0.02] hover:bg-white/[0.04] transition-colors focus:outline-none group/btn"
+                              >
+                                <div className="flex items-center gap-3 text-zinc-300 font-mono text-xs tracking-wide">
+                                  <motion.div 
+                                    animate={{ rotate: isExpanded ? 90 : 0 }} 
+                                    transition={{ duration: 0.2 }}
+                                  >
+                                    <ChevronRight className="w-3.5 h-3.5 text-zinc-500" />
+                                  </motion.div>
+                                  {getToolIcon(msg.toolName || msg.content)}
+                                  <span className="truncate max-w-[200px] md:max-w-[400px]">
+                                    {msg.toolName || (msg.content || 'Processing...')}
+                                  </span>
+                                </div>
+                                
+                                <span className="flex items-center gap-2">
+                                  {msg.status === 'success' && <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />}
+                                  {msg.status === 'error' && <div className="w-1.5 h-1.5 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]" />}
+                                  {(!msg.status || (msg.status !== 'success' && msg.status !== 'error')) && (
+                                    <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse shadow-[0_0_8px_rgba(245,158,11,0.5)]" />
+                                  )}
+                                </span>
+                              </button>
+                              
+                              <AnimatePresence>
+                                {isExpanded && (
+                                  <motion.div 
+                                    initial={{ height: 0, opacity: 0 }}
+                                    animate={{ height: 'auto', opacity: 1 }}
+                                    exit={{ height: 0, opacity: 0 }}
+                                    transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
+                                    className="overflow-hidden"
+                                  >
+                                    <div className="p-4 bg-black/40 font-mono text-xs overflow-x-auto border-t border-white/5">
+                                      {msg.codeSnippet && (
+                                        <pre className="text-zinc-300 mb-4 p-3 bg-black/60 rounded-lg border border-white/5"><code className="text-emerald-400/90">{msg.codeSnippet}</code></pre>
+                                      )}
+                                      <div className="text-zinc-400 whitespace-pre-wrap leading-relaxed">
+                                        {msg.output || msg.content || 'No output details.'}
+                                      </div>
+                                    </div>
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
+                            </div>
+                          );
+                        }
+
+                        if (msg.type === 'approval') {
+                          return (
+                            <div key={msg.id} className="w-full max-w-2xl bg-black/40 border border-amber-500/20 rounded-xl overflow-hidden shadow-lg backdrop-blur-md relative">
+                              <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-amber-500/50 to-transparent opacity-50" />
+                              <div className="p-5 flex items-start gap-4">
+                                <div className="w-8 h-8 rounded-full bg-amber-500/10 flex items-center justify-center flex-shrink-0 border border-amber-500/20">
+                                  <ShieldAlert className="w-4 h-4 text-amber-400" />
+                                </div>
+                                <div className="flex-1">
+                                  <h3 className="font-medium text-amber-500 text-xs md:text-sm mb-1 tracking-wide">{msg.actionTitle || 'Permission Required'}</h3>
+                                  <p className="text-[10px] md:text-xs text-amber-200/70 leading-relaxed max-w-lg">{msg.details || msg.content}</p>
+                                </div>
+                              </div>
+                              
+                              {(!msg.status || msg.status === 'pending') ? (
+                                <div className="px-5 py-3 bg-white/[0.02] flex justify-end gap-2 border-t border-white/5">
+                                  <button 
+                                    onClick={() => handleApproval(msg.id, false)}
+                                    className="px-4 py-2 text-xs font-medium text-zinc-400 hover:text-zinc-200 hover:bg-white/10 rounded-lg transition-colors focus:outline-none"
+                                  >
+                                    Deny
+                                  </button>
+                                  <button 
+                                    onClick={() => handleApproval(msg.id, true)}
+                                    className="px-4 py-2 text-xs font-medium text-amber-950 bg-amber-500 hover:bg-amber-400 rounded-lg transition-colors focus:outline-none shadow-[0_0_15px_rgba(245,158,11,0.2)]"
+                                  >
+                                    Approve Action
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className={`px-5 py-3 flex items-center gap-2 text-xs font-medium border-t ${
+                                  msg.status === 'approved' 
+                                    ? 'border-emerald-500/20 text-emerald-400 bg-emerald-500/5' 
+                                    : 'border-rose-500/20 text-rose-400 bg-rose-500/5'
+                                }`}>
+                                  {msg.status === 'approved' ? <CheckCircle2 className="w-3.5 h-3.5" /> : <XCircle className="w-3.5 h-3.5" />}
+                                  Action {msg.status === 'approved' ? 'Approved' : 'Rejected'}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        }
+
+                        return null;
+                      })}
+                    </div>
+                  )}
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
+          <div ref={messagesEndRef} className="h-4" />
         </div>
 
-        {/* Input Area */}
-        <div className="p-6 border-t border-gray-200 bg-white">
-          <form onSubmit={handleSubmit} className="flex gap-3">
-            <span className="text-black font-bold mt-0.5">&gt;</span>
+        {/* Floating Minimal Input Bar */}
+        <div className="absolute bottom-6 left-0 right-0 px-4 flex justify-center pointer-events-none z-10">
+          <motion.form 
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.2, duration: 0.5, ease: "easeOut" }}
+            onSubmit={handleSubmit} 
+            className="w-full max-w-3xl relative flex items-center pointer-events-auto group"
+          >
+            <div className="absolute inset-0 bg-white/5 rounded-full blur-xl transition-opacity group-focus-within:bg-white/10 opacity-50" />
+            
             <input
               type="text"
-              className="flex-1 bg-transparent border-none outline-none text-black placeholder-gray-400"
-              placeholder="Instruct the agent..."
               value={input}
               onChange={(e) => setInput(e.target.value)}
               disabled={isProcessing}
-              autoFocus
+              placeholder={isProcessing ? "Agent is processing..." : "Ask the agent anything..."}
+              className="w-full bg-[#09090b]/80 backdrop-blur-2xl border border-white/10 text-zinc-100 text-xs md:text-sm rounded-full py-3 md:py-4 pl-4 md:pl-6 pr-12 md:pr-14 focus:outline-none focus:border-white/20 transition-all placeholder:text-zinc-600 shadow-2xl shadow-black/50 disabled:opacity-50"
             />
-          </form>
+            
+            <button 
+              type="submit"
+              disabled={!input.trim() || isProcessing}
+              className="absolute right-2.5 p-2 bg-white text-zinc-900 hover:bg-zinc-200 disabled:bg-zinc-800 disabled:text-zinc-600 rounded-full transition-colors flex items-center justify-center focus:outline-none shadow-sm disabled:shadow-none"
+            >
+              <Send className="w-4 h-4 ml-0.5" />
+            </button>
+          </motion.form>
         </div>
-      </div>
+
+      </main>
+      
+      {/* Global minimal scrollbar styles for this component */}
+      <style dangerouslySetInnerHTML={{__html: `
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background-color: rgba(255, 255, 255, 0.1);
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background-color: rgba(255, 255, 255, 0.2);
+        }
+      `}} />
     </div>
   );
-}
-
-function MessageRow({ msg, onApprove, onSpeak, onStopSpeak, isSpeaking }) {
-  if (msg.type === 'text') {
-    const isUser = msg.role === 'user';
-    return (
-      <div className="flex gap-3 group">
-        {isUser ? (
-          <span className="text-black font-bold">&gt;</span>
-        ) : (
-          <span className="text-gray-500 font-bold">&lt;</span>
-        )}
-        <div className="flex-1 flex gap-2">
-          <span className="text-gray-800 font-medium">{msg.content}</span>
-          {!isUser && (
-            <button
-              onClick={() => isSpeaking ? onStopSpeak() : onSpeak(msg.id, msg.content)}
-              className="text-gray-400 hover:text-black transition-colors opacity-0 group-hover:opacity-100 flex items-center justify-center ml-2"
-              title={isSpeaking ? "Stop speaking" : "Read aloud"}
-            >
-              {isSpeaking ? <Square size={14} fill="currentColor" /> : <Volume2 size={16} />}
-            </button>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  if (msg.type === 'trace') {
-    return (
-      <div className="flex gap-3 items-center ml-5 text-sm">
-        {msg.status === 'success' ? (
-          <Check size={14} className="text-gray-500" strokeWidth={3} />
-        ) : msg.status === 'error' ? (
-          <div className="w-1.5 h-1.5 rounded-full bg-red-500 ml-1"></div>
-        ) : (
-          <div className="w-1.5 h-1.5 rounded-full bg-gray-400 ml-1"></div>
-        )}
-        <span className={`${msg.status === 'success' ? 'text-gray-600' : 'text-gray-400'}`}>
-          {msg.content || 'running task...'}
-        </span>
-      </div>
-    );
-  }
-
-  if (msg.type === 'approval') {
-    const isPending = msg.status === 'pending' || !msg.status;
-    return (
-      <div className="my-6 border-l-2 border-black bg-gray-50 p-4 flex flex-col sm:flex-row sm:items-center justify-between ml-5 shadow-sm rounded-r-sm gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-2 h-2 bg-black"></div>
-          <span className="text-black font-medium">{msg.content}</span>
-        </div>
-
-        {isPending ? (
-          <div className="flex gap-2">
-            <button
-              onClick={() => onApprove(msg.id, true)}
-              className="border border-gray-300 text-black hover:bg-gray-200 px-4 py-1 text-xs uppercase tracking-widest transition-colors font-semibold rounded-sm bg-gray-100"
-            >
-              Approve
-            </button>
-            <button
-              onClick={() => onApprove(msg.id, false)}
-              className="border border-gray-300 text-red-600 hover:bg-red-50 px-4 py-1 text-xs uppercase tracking-widest transition-colors font-semibold rounded-sm bg-white"
-            >
-              Reject
-            </button>
-          </div>
-        ) : (
-          <div className="flex items-center gap-3">
-            <div className="text-xs uppercase tracking-widest border border-gray-200 px-3 py-1 bg-gray-50 text-gray-500">
-              {msg.status}
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  return null;
 }
