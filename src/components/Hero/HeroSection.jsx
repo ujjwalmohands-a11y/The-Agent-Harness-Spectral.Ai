@@ -427,7 +427,7 @@ export default function HeroSection() {
       {/* Floating Theme Button */}
       <button
         onClick={() => { setIsTerminalOpen(!isTerminalOpen); setIsTeamOpen(false); }}
-        className="fixed right-4 bottom-24 sm:right-6 sm:bottom-6 z-50 flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-3 rounded-full bg-black/40 border border-white/10 hover:bg-black/70 backdrop-blur-xl transition-all duration-300 shadow-[0_8px_32px_rgba(0,0,0,0.5)] hover:shadow-[0_8px_40px_var(--theme-glow)] text-white font-medium text-[10px] sm:text-sm group"
+        className="fixed right-4 bottom-24 sm:right-6 sm:bottom-6 z-50 flex items-center gap-2 px-3 py-2 sm:px-3 sm:py-2.5 rounded-full bg-black/40 border border-white/10 hover:bg-black/70 backdrop-blur-xl transition-all duration-300 shadow-[0_8px_32px_rgba(0,0,0,0.5)] hover:shadow-[0_8px_40px_var(--theme-glow)] text-white font-medium text-[10px] sm:text-xs group"
       >
         <Palette className="w-4 h-4 text-[var(--theme-color)] group-hover:scale-110 transition-transform" />
         Change Theme
@@ -448,14 +448,14 @@ export default function HeroSection() {
             {/* Ambient Glow behind the terminal */}
             <div className="absolute -inset-1 bg-[var(--theme-color)] rounded-[20px] blur-[80px] opacity-20 group-hover:opacity-40 transition duration-1000 group-hover:duration-200" />
 
-            <div className="aspect-[4/5] sm:aspect-[4/3] md:aspect-[16/10] rounded-2xl bg-black/40 backdrop-blur-3xl border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.3)] flex flex-col font-mono text-[10px] sm:text-[12px] md:text-[13px] text-gray-300 overflow-hidden relative z-20 transition-all duration-500 hover:bg-black/50">
+            <div className="aspect-[4/5] sm:aspect-[4/3] md:aspect-[16/9] lg:aspect-[21/9] max-h-[60vh] rounded-2xl bg-black/40 backdrop-blur-3xl border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.3)] flex flex-col font-mono text-[10px] sm:text-[11px] lg:text-[12px] text-gray-300 overflow-hidden relative z-20 transition-all duration-500 hover:bg-black/50">
 
               {/* Window Header */}
-              <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.05] bg-white/[0.01]">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.05] bg-white/[0.01]">
                 <div className="flex gap-2">
-                  <div className="w-2.5 h-2.5 rounded-full bg-white/20 hover:bg-red-400 transition-colors" />
-                  <div className="w-2.5 h-2.5 rounded-full bg-white/20 hover:bg-amber-400 transition-colors" />
-                  <div className="w-2.5 h-2.5 rounded-full bg-white/20 hover:bg-emerald-400 transition-colors" />
+                  <div className="w-2 h-2 rounded-full bg-white/20 hover:bg-red-400 transition-colors" />
+                  <div className="w-2 h-2 rounded-full bg-white/20 hover:bg-amber-400 transition-colors" />
+                  <div className="w-2 h-2 rounded-full bg-white/20 hover:bg-emerald-400 transition-colors" />
                 </div>
                 <div className="flex items-center gap-3">
                   <button onClick={() => setConfig(PRESETS[activePreset])} className="text-gray-500 hover:text-white transition-colors z-20 relative" title="Reset to Preset">
@@ -469,7 +469,7 @@ export default function HeroSection() {
 
               {/* Code Content */}
               {activeTab === 'ColorBends' ? (
-                <div className="px-4 sm:px-6 py-3 sm:py-4 leading-[1.6] overflow-x-auto flex-1 flex flex-col justify-center">
+                <div className="px-4 sm:px-6 py-2 sm:py-3 leading-[1.5] overflow-x-auto flex-1 flex flex-col justify-center">
                   <div>
                     <span className="text-white font-semibold">import</span> {'{ '}
                     <span className="text-purple-400">ColorBends</span>
@@ -531,7 +531,7 @@ export default function HeroSection() {
                   <div>{'}'}</div>
                 </div>
               ) : (
-                <div className="px-4 sm:px-6 py-3 sm:py-4 leading-[1.6] overflow-x-auto flex-1 flex flex-col justify-center">
+                <div className="px-4 sm:px-6 py-2 sm:py-3 leading-[1.5] overflow-x-auto flex-1 flex flex-col justify-center">
                   <div>
                     <span className="text-white font-semibold">import</span> {'{ '}
                     <span className="text-purple-400">DotField</span>
@@ -562,7 +562,7 @@ export default function HeroSection() {
               )}
 
               {/* Footer Tabs */}
-              <div className="flex items-center justify-between px-3 sm:px-5 py-3 sm:py-4 mt-auto border-t border-white/[0.05] bg-white/[0.01]">
+              <div className="flex items-center justify-between px-3 sm:px-5 py-2 sm:py-3 mt-auto border-t border-white/[0.05] bg-white/[0.01]">
                 <div className="flex gap-1 text-[10px] sm:text-xs font-medium overflow-x-auto custom-scrollbar pb-1 sm:pb-0 max-w-[70%] sm:max-w-none">
                   {Object.keys(PRESETS).map(preset => (
                     <button
@@ -638,14 +638,14 @@ export default function HeroSection() {
                 : 'opacity-0 translate-y-24 scale-95 pointer-events-none'
             }`}
           >
-            <div className="relative group">
+            <div className="relative group max-w-xl mx-auto">
                <div className="absolute -inset-2 bg-[var(--theme-color)] rounded-[30px] blur-xl opacity-20 group-hover:opacity-40 transition duration-500 pointer-events-none" />
                <PromptInputBox 
                  onSend={(message, files) => {
                    navigate('/chat', { state: { initialPrompt: message } });
                  }} 
                  placeholder="How can I help you build today?"
-                 className="relative z-10 shadow-2xl border-white/10 bg-black/60 backdrop-blur-2xl"
+                 className="relative z-10 shadow-2xl border-white/10 bg-black/60 backdrop-blur-2xl text-[11px] sm:text-[13px] py-3 sm:py-4"
                />
             </div>
           </div>
