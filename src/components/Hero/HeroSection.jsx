@@ -519,10 +519,7 @@ export default function HeroSection() {
                     <NumberProp label="speed" value={config.speed} onChange={v => setConfig({ ...config, speed: v })} step={0.01} max={5} />
                     <NumberProp label="frequency" value={config.frequency} onChange={v => setConfig({ ...config, frequency: v })} step={0.1} max={10} />
                     <NumberProp label="noise" value={config.noise} onChange={v => setConfig({ ...config, noise: v })} step={0.01} max={2} />
-                    <NumberProp label="bandWidth" value={config.bandWidth} onChange={v => setConfig({ ...config, bandWidth: v })} step={0.01} max={2} />
                     <NumberProp label="rotation" min={-360} max={360} value={config.rotation} onChange={v => setConfig({ ...config, rotation: v })} step={1} />
-                    <NumberProp label="fadeTop" value={config.fadeTop || 0.75} onChange={v => setConfig({ ...config, fadeTop: v })} step={0.01} max={1} />
-                    <NumberProp label="iterations" min={1} max={10} value={config.iterations} onChange={v => setConfig({ ...config, iterations: v })} step={1} />
                     <NumberProp label="intensity" value={config.intensity} onChange={v => setConfig({ ...config, intensity: v })} step={0.1} max={5} />
                   </div>
 
