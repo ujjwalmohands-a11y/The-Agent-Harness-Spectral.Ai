@@ -277,7 +277,7 @@ const NumberProp = ({ label, value, onChange, step = 0.1, min = 0, max = Infinit
       <span className="text-white">{label}=</span>
       <span className="text-white ml-1">{"{"}</span>
       <div
-        className="inline-flex items-center bg-black/30 hover:bg-black/50 transition-colors rounded px-1.5 py-0.5 mx-0.5 text-xs text-cyan-300 border border-white/5 shadow-inner leading-none cursor-ew-resize select-none"
+        className="inline-flex items-center bg-black/30 hover:bg-black/50 transition-colors rounded px-1.5 py-0.5 mx-0.5 text-[10px] sm:text-xs text-cyan-300 border border-white/5 shadow-inner leading-none cursor-ew-resize select-none"
         onPointerDown={handlePointerDown}
       >
         <input
@@ -297,7 +297,7 @@ const NumberProp = ({ label, value, onChange, step = 0.1, min = 0, max = Infinit
           }}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
-          className="bg-transparent outline-none w-[45px] text-center text-cyan-300 font-mono transition-all duration-300 m-0 p-0"
+          className="bg-transparent outline-none w-[40px] sm:w-[45px] text-center text-cyan-300 font-mono transition-all duration-300 m-0 p-0 text-[10px] sm:text-xs"
         />
       </div>
       <span className="text-white">{"}"}</span>
@@ -427,7 +427,7 @@ export default function HeroSection() {
       {/* Floating Theme Button */}
       <button
         onClick={() => { setIsTerminalOpen(!isTerminalOpen); setIsTeamOpen(false); }}
-        className="fixed right-6 bottom-6 z-50 flex items-center gap-2 px-4 py-3 rounded-full bg-black/40 border border-white/10 hover:bg-black/70 backdrop-blur-xl transition-all duration-300 shadow-[0_8px_32px_rgba(0,0,0,0.5)] hover:shadow-[0_8px_40px_var(--theme-glow)] text-white font-medium text-sm group"
+        className="fixed right-4 bottom-24 sm:right-6 sm:bottom-6 z-50 flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-3 rounded-full bg-black/40 border border-white/10 hover:bg-black/70 backdrop-blur-xl transition-all duration-300 shadow-[0_8px_32px_rgba(0,0,0,0.5)] hover:shadow-[0_8px_40px_var(--theme-glow)] text-white font-medium text-[10px] sm:text-sm group"
       >
         <Palette className="w-4 h-4 text-[var(--theme-color)] group-hover:scale-110 transition-transform" />
         Change Theme
@@ -448,7 +448,7 @@ export default function HeroSection() {
             {/* Ambient Glow behind the terminal */}
             <div className="absolute -inset-1 bg-[var(--theme-color)] rounded-[20px] blur-[80px] opacity-20 group-hover:opacity-40 transition duration-1000 group-hover:duration-200" />
 
-            <div className="aspect-[4/3] rounded-2xl bg-black/40 backdrop-blur-3xl border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.3)] flex flex-col font-mono text-[12px] sm:text-[13px] text-gray-300 overflow-hidden relative z-20 transition-all duration-500 hover:bg-black/50">
+            <div className="aspect-[4/5] sm:aspect-[4/3] md:aspect-[16/10] rounded-2xl bg-black/40 backdrop-blur-3xl border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.3)] flex flex-col font-mono text-[10px] sm:text-[12px] md:text-[13px] text-gray-300 overflow-hidden relative z-20 transition-all duration-500 hover:bg-black/50">
 
               {/* Window Header */}
               <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.05] bg-white/[0.01]">
@@ -469,7 +469,7 @@ export default function HeroSection() {
 
               {/* Code Content */}
               {activeTab === 'ColorBends' ? (
-                <div className="px-6 py-3 sm:py-4 leading-[1.6] overflow-hidden flex-1 flex flex-col justify-center">
+                <div className="px-4 sm:px-6 py-3 sm:py-4 leading-[1.6] overflow-x-auto flex-1 flex flex-col justify-center">
                   <div>
                     <span className="text-white font-semibold">import</span> {'{ '}
                     <span className="text-purple-400">ColorBends</span>
@@ -531,7 +531,7 @@ export default function HeroSection() {
                   <div>{'}'}</div>
                 </div>
               ) : (
-                <div className="px-6 py-3 sm:py-4 leading-[1.6] overflow-hidden flex-1 flex flex-col justify-center">
+                <div className="px-4 sm:px-6 py-3 sm:py-4 leading-[1.6] overflow-x-auto flex-1 flex flex-col justify-center">
                   <div>
                     <span className="text-white font-semibold">import</span> {'{ '}
                     <span className="text-purple-400">DotField</span>
@@ -562,8 +562,8 @@ export default function HeroSection() {
               )}
 
               {/* Footer Tabs */}
-              <div className="flex items-center justify-between px-5 py-4 mt-auto border-t border-white/[0.05] bg-white/[0.01]">
-                <div className="flex gap-1 text-xs font-medium">
+              <div className="flex items-center justify-between px-3 sm:px-5 py-3 sm:py-4 mt-auto border-t border-white/[0.05] bg-white/[0.01]">
+                <div className="flex gap-1 text-[10px] sm:text-xs font-medium overflow-x-auto custom-scrollbar pb-1 sm:pb-0 max-w-[70%] sm:max-w-none">
                   {Object.keys(PRESETS).map(preset => (
                     <button
                       key={preset}
@@ -580,7 +580,7 @@ export default function HeroSection() {
                     </button>
                   ))}
                 </div>
-                <div className="text-xs text-gray-500 font-mono hidden sm:block">
+                <div className="text-[10px] sm:text-xs text-gray-500 font-mono hidden sm:block whitespace-nowrap ml-2">
                   ↔ Every value is editable
                 </div>
               </div>
@@ -632,7 +632,7 @@ export default function HeroSection() {
 
           {/* AI Chat Box */}
           <div
-            className={`absolute bottom-12 w-full max-w-2xl px-6 transition-all duration-700 ease-out z-10 ${
+            className={`absolute bottom-6 sm:bottom-12 w-full max-w-2xl px-4 sm:px-6 transition-all duration-700 ease-out z-10 ${
               (!isTerminalOpen && !isTeamOpen)
                 ? 'opacity-100 translate-y-0 scale-100 pointer-events-auto'
                 : 'opacity-0 translate-y-24 scale-95 pointer-events-none'
