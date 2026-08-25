@@ -4,6 +4,7 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { ArrowUp, Paperclip, Square, X, StopCircle, Mic, Globe, BrainCog, FolderCode } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { LiveWaveform } from "./waveform";
+import { SplitText } from "./split-text";
 // Utility function for className merging
 const cn = (...classes: (string | undefined | null | false)[]) => classes.filter(Boolean).join(" ");
 
@@ -180,7 +181,7 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
 
   const mediaRecorderRef = React.useRef<MediaRecorder | null>(null);
   const chunksRef = React.useRef<BlobPart[]>([]);
-  
+
   const onStartRef = React.useRef(onStartRecording);
   const onStopRef = React.useRef(onStopRecording);
   React.useEffect(() => {
@@ -203,7 +204,7 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
         clearInterval(timerRef.current);
         timerRef.current = null;
       }
-      
+
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
         mediaRecorderRef.current.stop(); // This triggers onstop
       } else if (!mediaRecorderRef.current) {
@@ -213,13 +214,13 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
         setTime(0);
       }
     }
-    
+
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, [isRecording]);
 
-  const handleStreamReady = (stream: MediaStream) => {
+  const handleStreamReady = React.useCallback((stream: MediaStream) => {
     try {
       // Find the best supported audio format
       let mimeType = '';
@@ -252,15 +253,15 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
       console.error("Synchronous error starting MediaRecorder:", err);
       onStopRef.current(timeRef.current, null);
     }
-  };
+  }, []);
 
-  const handleStreamError = (error: Error) => {
+  const handleStreamError = React.useCallback((error: Error) => {
     console.error("Failed to acquire microphone access:", error);
     if (timerRef.current) clearInterval(timerRef.current);
     timeRef.current = 0;
     setTime(0);
     onStopRef.current(0, null);
-  };
+  }, []);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -280,11 +281,11 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
         <span className="font-mono text-sm text-white/80">{formatTime(time)}</span>
       </div>
       <div className="w-full h-12 flex items-center justify-center px-4">
-        <LiveWaveform 
+        <LiveWaveform
           active={isRecording}
           onStreamReady={handleStreamReady}
           onError={handleStreamError}
-          mode="scrolling"
+          mode="static"
           height={40}
           barWidth={3}
           barGap={2}
@@ -507,6 +508,13 @@ const CustomDivider: React.FC = () => (
   </div>
 );
 
+const RECORDING_MESSAGES = [
+  "Speak freely, I'm listening.",
+  "Listening to your voice...",
+  "Translating thought to text...",
+  "Tuning in..."
+];
+
 // Main PromptInputBox Component
 interface PromptInputBoxProps {
   onSend?: (message: string, files?: File[]) => void;
@@ -525,8 +533,16 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
   const [showSearch, setShowSearch] = React.useState(false);
   const [showThink, setShowThink] = React.useState(false);
   const [showCanvas, setShowCanvas] = React.useState(false);
+  const [recordingMessage, setRecordingMessage] = React.useState(RECORDING_MESSAGES[0]);
   const uploadInputRef = React.useRef<HTMLInputElement>(null);
   const promptBoxRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (isRecording) {
+      const randomIndex = Math.floor(Math.random() * RECORDING_MESSAGES.length);
+      setRecordingMessage(RECORDING_MESSAGES[randomIndex]);
+    }
+  }, [isRecording]);
 
   const handleToggleChange = (value: string) => {
     if (value === "search") {
@@ -747,24 +763,51 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
 
         <div
           className={cn(
-            "transition-all duration-300 w-full flex-1 flex flex-col justify-center",
-            isRecording ? "opacity-50 pointer-events-none" : "opacity-100"
+            "transition-all duration-300 w-full flex-1 flex flex-col justify-center relative"
           )}
         >
-          <PromptInputTextarea
-            placeholder={
-              isTranscribing
-                ? "Transcribing..."
-                : showSearch
-                  ? "Search the web..."
-                  : showThink
-                    ? "Think deeply..."
-                    : showCanvas
-                      ? "Create on canvas..."
-                      : placeholder
-            }
-            className="text-base flex-1 h-full w-full"
-          />
+          <div className={cn(
+            "transition-all duration-300 w-full h-full",
+            isRecording ? "opacity-0 pointer-events-none" : "opacity-100"
+          )}>
+            <PromptInputTextarea
+              placeholder={
+                isTranscribing
+                  ? "Transcribing..."
+                  : showSearch
+                    ? "Search the web..."
+                    : showThink
+                      ? "Think deeply..."
+                      : showCanvas
+                        ? "Create on canvas..."
+                        : placeholder
+              }
+              className="text-base flex-1 h-full w-full"
+            />
+          </div>
+
+          <AnimatePresence mode="wait">
+            {isRecording && (
+              <motion.div
+                key={recordingMessage}
+                initial={{ opacity: 0, y: 5, filter: "blur(4px)" }}
+                animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                exit={{ opacity: 0, y: -5, filter: "blur(4px)" }}
+                transition={{ duration: 0.4 }}
+                className="absolute inset-0 flex items-center justify-center pointer-events-none"
+              >
+                <div className="text-base md:text-lg font-light tracking-wide text-white/80 flex items-center gap-2">
+                  <SplitText
+                    text={recordingMessage}
+                    delay={30}
+                    duration={0.6}
+                    from={{ opacity: 0, y: 15 }}
+                    to={{ opacity: 1, y: 0 }}
+                  />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         <VoiceRecorder

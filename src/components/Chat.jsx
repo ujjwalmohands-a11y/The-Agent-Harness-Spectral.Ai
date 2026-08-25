@@ -13,20 +13,25 @@ import { Message, MessageAvatar, MessageContent } from "@/components/ui/message"
 import { PromptInputBox } from "@/components/ui/ai-prompt-box";
 import { BorderBeam } from "@/components/ui/border-beam";
 import { Sidebar } from "@/components/ui/sidebar";
+import { ThemeSwitcher } from "@/components/ui/apple-liquid-glass-switcher";
+import { TrueForge } from '@truefoundry/trueforge-sdk';
+
+const tfClient = new TrueForge({ baseUrl: '/' });
 
 const generateId = () => {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
     return crypto.randomUUID();
   }
-  return 'id-' + Date.now().toString(36) + '-' + Math.random().toString(36).substring(2, 9);
+  return Math.random().toString(36).substring(2, 15);
 };
 
 export default function Chat() {
   // State for TrueForge backend integration
   const [messages, setMessages] = useState([]);
-  const [sessionId] = useState(() => generateId());
+  const [sessionId, setSessionId] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [pendingApproval, setPendingApproval] = useState(null);
+  const hasCreatedSession = useRef(false);
   
   // UI State
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -44,6 +49,25 @@ export default function Chat() {
     scrollToBottom();
   }, [messages, pendingApproval]);
 
+  const processTrueForgeStream = async (stream, botMsgId) => {
+    let currentText = "";
+    for await (const event of stream) {
+      if (event.type === 'tool.approval_required') {
+        const toolCall = event.toolCalls[0];
+        setPendingApproval({
+          threadId: event.threadId,
+          toolCallId: toolCall.id,
+          actionTitle: 'Permission Required',
+          details: 'The AI is requesting permission to execute an action.'
+        });
+        break;
+      } else if (event.type === 'model.message.delta' && event.content) {
+        currentText += event.content;
+        setMessages(prev => prev.map(msg => msg.id === botMsgId ? { ...msg, content: currentText } : msg));
+      }
+    }
+  };
+
   const submitMessage = async (textPayload) => {
     if (!textPayload || !textPayload.trim()) return;
 
@@ -56,27 +80,41 @@ export default function Chat() {
     setIsProcessing(true);
 
     try {
-      const response = await fetch('http://localhost:8000/api/agent/run', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: textPayload, sessionId }),
+      let currentSessionId = sessionId;
+
+      if (!hasCreatedSession.current) {
+        const session = await tfClient.sessions.create({
+          agent: {
+            spec: {
+              model: { 
+                name: 'groq-for-trueforge-hackathon/gpt-oss-120b',
+                params: { maxTokens: 4096 }
+              },
+              config: {
+                askUserQuestions: { enabled: false },
+                generativeUi: { enabled: false }
+              }
+            }
+          }
+        });
+        currentSessionId = session.data.id;
+        setSessionId(currentSessionId);
+        hasCreatedSession.current = true;
+      }
+
+      const stream = await tfClient.sessions.createTurnStream(currentSessionId, {
+        input: [{ type: 'user.message', content: textPayload }]
       });
 
-      const data = await response.json();
+      const botMsgId = generateId();
+      setMessages((prev) => [
+        ...prev,
+        { id: botMsgId, role: 'bot', content: '' }
+      ]);
 
-      if (data.status === 'REQUIRES_APPROVAL') {
-        setPendingApproval({ 
-          approvalId: data.approvalId,
-          actionTitle: data.actionTitle || 'Permission Required',
-          details: data.details || 'The AI is requesting permission to execute an action.'
-        });
-      } else {
-        setMessages((prev) => [
-          ...prev,
-          { id: generateId(), role: 'bot', content: data.response || 'Task completed.' }
-        ]);
-        setIsProcessing(false);
-      }
+      await processTrueForgeStream(stream, botMsgId);
+      
+      setIsProcessing(false);
     } catch (error) {
       console.error('Failed to connect to backend:', error);
       setMessages((prev) => [
@@ -90,33 +128,34 @@ export default function Chat() {
   const handleApproval = async (decision) => {
     if (!pendingApproval) return;
     
-    // Optimistically record the decision in chat
     const statusText = decision === 'APPROVED' ? 'Action Approved' : 'Action Rejected';
     setMessages((prev) => [
       ...prev,
       { id: generateId(), role: 'system', content: `*${statusText} by user*` }
     ]);
     
-    const currentApprovalId = pendingApproval.approvalId;
+    const currentApprovalId = pendingApproval.toolCallId;
+    const currentThreadId = pendingApproval.threadId;
     setPendingApproval(null);
     setIsProcessing(true);
 
     try {
-      const response = await fetch('http://localhost:8000/api/agent/approve', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          approvalId: currentApprovalId, 
-          decision: decision 
-        }),
+      const stream = await tfClient.sessions.createTurnStream(sessionId, {
+        input: [{
+          type: 'user.tool_approval',
+          threadId: currentThreadId,
+          toolCallId: currentApprovalId,
+          approval: { status: decision === 'APPROVED' ? 'allow' : 'deny' }
+        }]
       });
 
-      const data = await response.json();
-
+      const botMsgId = generateId();
       setMessages((prev) => [
         ...prev,
-        { id: generateId(), role: 'bot', content: data.response || `Action was ${decision.toLowerCase()}.` }
+        { id: botMsgId, role: 'bot', content: '' }
       ]);
+
+      await processTrueForgeStream(stream, botMsgId);
     } catch (error) {
       console.error('Failed to send approval:', error);
       setMessages((prev) => [
@@ -137,7 +176,7 @@ export default function Chat() {
   }, [initialPrompt]);
 
   return (
-    <div className="flex h-screen bg-[#09090b] text-foreground font-sans selection:bg-primary/20 overflow-hidden">
+    <div className="flex h-screen bg-zinc-50 dark:bg-[#09090b] dim:bg-zinc-950 text-zinc-900 dark:text-foreground dim:text-zinc-100 font-sans selection:bg-primary/20 overflow-hidden transition-colors duration-300">
       
       {/* Sidebar */}
       <Sidebar 
@@ -146,21 +185,32 @@ export default function Chat() {
       />
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col h-full relative overflow-hidden bg-[#09090b]">
+      <main className="flex-1 flex flex-col h-full relative overflow-hidden bg-zinc-50 dark:bg-[#09090b] dim:bg-zinc-950/80 transition-colors duration-300">
         
+        {/* Glassy Orbs for Dim mode */}
+        <div className="absolute inset-0 pointer-events-none hidden dim:block overflow-hidden z-0">
+          <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-signature-gradient blur-[120px] opacity-40 animate-orb"></div>
+          <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] rounded-full bg-signature-gradient blur-[150px] opacity-30 animate-orb-reverse"></div>
+        </div>
+
         {/* Top Navbar */}
-        <header className="h-14 flex items-center px-4 border-b border-white/5 shrink-0 bg-[#09090b]/80 backdrop-blur-md z-20">
-          {!isSidebarOpen && (
-            <button 
-              onClick={() => setIsSidebarOpen(true)}
-              className="mr-3 p-1.5 rounded-md text-gray-400 hover:text-gray-200 hover:bg-white/5 transition-colors"
-            >
-              <PanelLeft className="w-4 h-4" />
-            </button>
-          )}
-          <div className="flex flex-col">
-            <span className="font-medium text-sm text-gray-200">TrueForge Agent</span>
-            <span className="text-xs text-gray-500">Connected</span>
+        <header className="h-14 flex items-center px-4 border-b border-black/5 dark:border-white/5 dim:border-white/10 shrink-0 bg-zinc-50/80 dark:bg-[#09090b]/80 dim:bg-zinc-950/30 dim:backdrop-blur-xl backdrop-blur-md z-20 justify-between transition-colors duration-300">
+          <div className="flex items-center">
+            {!isSidebarOpen && (
+              <button 
+                onClick={() => setIsSidebarOpen(true)}
+                className="mr-3 p-1.5 rounded-md text-gray-400 hover:text-gray-200 hover:bg-white/5 transition-colors"
+              >
+                <PanelLeft className="w-4 h-4" />
+              </button>
+            )}
+            <div className="flex flex-col">
+              <span className="font-medium text-sm text-zinc-800 dark:text-gray-200 dim:text-white">TrueForge Agent</span>
+              <span className="text-xs text-zinc-500 dark:text-gray-500 dim:text-gray-400">Connected</span>
+            </div>
+          </div>
+          <div>
+            <ThemeSwitcher />
           </div>
         </header>
 
@@ -174,11 +224,11 @@ export default function Chat() {
                 transition={{ duration: 0.5, ease: "easeOut" }}
                 className="h-full flex flex-col items-center justify-center text-muted-foreground mt-24"
               >
-                <div className="w-16 h-16 rounded-2xl bg-secondary border border-border flex items-center justify-center mb-6 shadow-sm">
-                  <Sparkles className="w-7 h-7 text-primary" />
+                <div className="w-16 h-16 rounded-2xl bg-zinc-100 dark:bg-secondary dim:bg-white/5 dim:glass-panel border border-black/10 dark:border-border flex items-center justify-center mb-6 shadow-sm">
+                  <Sparkles className="w-7 h-7 text-amber-500 dark:text-primary dim:text-purple-400" />
                 </div>
-                <h2 className="text-lg md:text-xl font-medium text-foreground mb-2">How can I help you today?</h2>
-                <p className="text-xs md:text-sm">Enter a prompt to initialize the TrueForge agent.</p>
+                <h2 className="text-lg md:text-xl font-medium text-zinc-800 dark:text-foreground dim:text-white mb-2">How can I help you today?</h2>
+                <p className="text-xs md:text-sm text-zinc-500 dark:text-muted-foreground dim:text-gray-300">Enter a prompt to initialize the TrueForge agent.</p>
               </motion.div>
             )}
 
@@ -254,16 +304,16 @@ export default function Chat() {
         </ChatContainerRoot>
 
         {/* Floating Minimal Input Bar */}
-        <div className="absolute bottom-6 left-0 right-0 px-4 flex justify-center z-10 bg-gradient-to-t from-[#09090b] via-[#09090b]/95 to-transparent pt-12">
+        <div className="absolute bottom-6 left-0 right-0 px-4 flex justify-center z-10 bg-gradient-to-t from-zinc-50 dark:from-[#09090b] dim:from-zinc-950 via-zinc-50/95 dark:via-[#09090b]/95 dim:via-zinc-950/90 to-transparent pt-12 pointer-events-none transition-colors duration-300">
           <motion.div
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.2, duration: 0.5, ease: "easeOut" }}
-            className="w-full max-w-2xl relative"
+            className="w-full max-w-2xl relative pointer-events-auto"
           >
-            <div className="w-full relative shadow-2xl rounded-2xl">
+            <div className="w-full relative shadow-2xl rounded-2xl bg-white dark:bg-black/60 dim:bg-white/5 dim:glass-panel dim:backdrop-blur-2xl border border-black/10 dark:border-white/10 dim:border-white/20 transition-colors duration-300">
               <BorderBeam size="md" colorVariant="colorful">
-                <div className="bg-black/60 backdrop-blur-xl border border-white/10 rounded-2xl w-full">
+                <div className="w-full">
                   <PromptInputBox 
                     onSend={submitMessage}
                     isLoading={isProcessing || pendingApproval}
