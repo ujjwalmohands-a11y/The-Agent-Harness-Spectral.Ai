@@ -10,6 +10,9 @@ import DotField from './DotField';
 import { CoverflowCarousel } from './CoverflowCarousel';
 import { NavBar } from '@/components/ui/tubelight-navbar';
 import { PromptInputBox } from '@/components/ui/ai-prompt-box';
+import { BorderBeam } from '@/components/ui/border-beam';
+import CurvedLoop from './CurvedLoop';
+import './MinimalHero.css';
 
 const PRESETS = {
   Nebula: {
@@ -348,6 +351,8 @@ export default function HeroSection() {
   const navigate = useNavigate();
   const [isTerminalOpen, setIsTerminalOpen] = useState(false);
   const [isTeamOpen, setIsTeamOpen] = useState(false);
+  const [heroPrompt, setHeroPrompt] = useState('');
+  const [isChatActive, setIsChatActive] = useState(false);
 
   const navItems = [
     { name: 'Home', url: '/', icon: Home },
@@ -434,15 +439,15 @@ export default function HeroSection() {
       </button>
 
       {/* Foreground */}
-      <div className="relative z-20 pointer-events-none">
+      <div className="relative z-20">
         {/* Main Content */}
         <main className="w-full max-w-5xl mx-auto px-6 flex justify-center items-center relative z-20 min-h-screen">
 
           {/* Code Editor Window */}
           <div
             className={`relative w-full group transition-all duration-700 ease-out ${isTerminalOpen
-              ? 'opacity-100 translate-y-0 scale-100 blur-none pointer-events-auto'
-              : 'opacity-0 translate-y-24 scale-95 blur-md pointer-events-none'
+              ? 'opacity-100 translate-y-0 scale-100 blur-none pointer-events-auto z-30'
+              : 'opacity-0 translate-y-24 scale-95 blur-md pointer-events-none -z-10'
               }`}
           >
             {/* Ambient Glow behind the terminal */}
@@ -587,9 +592,9 @@ export default function HeroSection() {
 
           {/* Team Window */}
           <div
-            className={`absolute w-full max-w-3xl group transition-all duration-700 ease-out z-30 ${isTeamOpen
-              ? 'opacity-100 translate-y-0 scale-100 blur-none pointer-events-auto'
-              : 'opacity-0 translate-y-24 scale-95 blur-md pointer-events-none'
+            className={`absolute w-full max-w-3xl group transition-all duration-700 ease-out ${isTeamOpen
+              ? 'opacity-100 translate-y-0 scale-100 blur-none pointer-events-auto z-30'
+              : 'opacity-0 translate-y-24 scale-95 blur-md pointer-events-none -z-10'
               }`}
           >
             <div className="absolute -inset-1 bg-[var(--theme-color)] rounded-[20px] blur-[80px] opacity-20 transition duration-1000" />
@@ -627,23 +632,37 @@ export default function HeroSection() {
             </div>
           </div>
 
-          {/* AI Chat Box */}
+          {/* Main Title Area */}
           <div
-            className={`absolute bottom-6 sm:bottom-12 w-full max-w-2xl px-4 sm:px-6 transition-all duration-700 ease-out z-10 ${
-              (!isTerminalOpen && !isTeamOpen)
-                ? 'opacity-100 translate-y-0 scale-100 pointer-events-auto'
-                : 'opacity-0 translate-y-24 scale-95 pointer-events-none'
-            }`}
+            className={`absolute inset-0 flex flex-col items-center justify-center transition-all duration-700 ease-out ${(!isTerminalOpen && !isTeamOpen)
+              ? 'opacity-100 translate-y-0 scale-100 pointer-events-auto z-20'
+              : 'opacity-0 -translate-y-24 scale-95 pointer-events-none -z-10'
+              }`}
           >
-            <div className="relative group max-w-xl mx-auto">
+            <div className="text-content flex flex-col items-center w-full max-w-xl mx-auto">
+              {/* 1. Main Title */}
+              <h1 className="main-title text-center">Calm delegation.</h1>
+
+              {/* 2. Professional Subtext */}
+              <p className="subtitle text-center">
+                <span className="brand-tag">Spectral AI • Guided by TrueForge</span>
+                Let your models query, test, and build. Never worry about what they break.
+              </p>
+
+              {/* 3. AI Chat Box */}
+              <div className="relative group w-full mt-4">
                <div className="absolute -inset-2 bg-[var(--theme-color)] rounded-[30px] blur-xl opacity-20 group-hover:opacity-40 transition duration-500 pointer-events-none" />
-               <PromptInputBox 
-                 onSend={(message, files) => {
-                   navigate('/chat', { state: { initialPrompt: message } });
-                 }} 
-                 placeholder="How can I help you build today?"
-                 className="relative z-10 shadow-2xl border-white/10 bg-black/60 backdrop-blur-2xl text-[11px] sm:text-[13px] py-3 sm:py-4"
-               />
+                <div className="relative w-full rounded-[30px]">
+                  <PromptInputBox 
+                    onSend={(message, files) => {
+                      navigate('/chat', { state: { initialPrompt: message } });
+                    }} 
+                    placeholder="What do you want to build today?"
+                    className="relative z-10 shadow-2xl border-white/10 bg-black/60 backdrop-blur-2xl text-[11px] sm:text-[13px] py-3 sm:py-4"
+                  />
+                  <BorderBeam size="md" colorVariant="colorful" className="pointer-events-none" />
+                </div>
+              </div>
             </div>
           </div>
         </main>

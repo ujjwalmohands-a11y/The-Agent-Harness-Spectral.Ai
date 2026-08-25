@@ -3,7 +3,7 @@ import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { ArrowUp, Paperclip, Square, X, StopCircle, Mic, Globe, BrainCog, FolderCode } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-
+import { LiveWaveform } from "./waveform";
 // Utility function for className merging
 const cn = (...classes: (string | undefined | null | false)[]) => classes.filter(Boolean).join(" ");
 
@@ -60,15 +60,17 @@ const TooltipContent = React.forwardRef<
   React.ElementRef<typeof TooltipPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Content>
 >(({ className, sideOffset = 4, ...props }, ref) => (
-  <TooltipPrimitive.Content
-    ref={ref}
-    sideOffset={sideOffset}
-    className={cn(
-      "z-50 overflow-hidden rounded-md border border-[#333333] bg-[#1F2023] px-3 py-1.5 text-sm text-white shadow-md animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
-      className
-    )}
-    {...props}
-  />
+  <TooltipPrimitive.Portal>
+    <TooltipPrimitive.Content
+      ref={ref}
+      sideOffset={sideOffset}
+      className={cn(
+        "z-50 overflow-hidden rounded-md border border-[#333333] bg-[#1F2023] px-3 py-1.5 text-sm text-white whitespace-nowrap shadow-md animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+        className
+      )}
+      {...props}
+    />
+  </TooltipPrimitive.Portal>
 ));
 TooltipContent.displayName = TooltipPrimitive.Content.displayName;
 
@@ -165,34 +167,20 @@ interface VoiceRecorderProps {
   isRecording: boolean;
   onStartRecording: () => void;
   onStopRecording: (duration: number, audioBlob: Blob | null) => void;
-  visualizerBars?: number;
+  visualizerBars?: number; // kept for backwards compatibility but unused
 }
 const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
   isRecording,
   onStartRecording,
   onStopRecording,
-  visualizerBars = 32,
 }) => {
   const [time, setTime] = React.useState(0);
   const timeRef = React.useRef(0);
   const timerRef = React.useRef<NodeJS.Timeout | null>(null);
-  
-  // Audio and recording refs
-  const audioContextRef = React.useRef<AudioContext | null>(null);
-  const analyserRef = React.useRef<AnalyserNode | null>(null);
-  const sourceRef = React.useRef<MediaStreamAudioSourceNode | null>(null);
-  const animationFrameRef = React.useRef<number | null>(null);
-  const barsRef = React.useRef<(HTMLDivElement | null)[]>([]);
-  const isRecordingRef = React.useRef(isRecording);
-  
+
   const mediaRecorderRef = React.useRef<MediaRecorder | null>(null);
-  const streamRef = React.useRef<MediaStream | null>(null);
   const chunksRef = React.useRef<BlobPart[]>([]);
-
-  React.useEffect(() => {
-    isRecordingRef.current = isRecording;
-  }, [isRecording]);
-
+  
   const onStartRef = React.useRef(onStartRecording);
   const onStopRef = React.useRef(onStopRecording);
   React.useEffect(() => {
@@ -210,147 +198,69 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
         timeRef.current += 1;
         setTime(timeRef.current);
       }, 1000);
-
-      try {
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-          throw new Error("Audio recording is not supported in this browser");
-        }
-        navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
-          if (!isRecordingRef.current) {
-            stream.getTracks().forEach(track => track.stop());
-            return;
-          }
-        streamRef.current = stream;
-
-        // Find the best supported audio format
-        let mimeType = '';
-        if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
-          mimeType = 'audio/webm;codecs=opus';
-        } else if (MediaRecorder.isTypeSupported('audio/webm')) {
-          mimeType = 'audio/webm';
-        } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
-          mimeType = 'audio/mp4';
-        }
-
-        // Setup MediaRecorder
-        const mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
-        mediaRecorderRef.current = mediaRecorder;
-        
-        mediaRecorder.ondataavailable = (e) => {
-          if (e.data.size > 0) chunksRef.current.push(e.data);
-        };
-        
-        mediaRecorder.onstop = () => {
-          const blob = new Blob(chunksRef.current, { type: mediaRecorder.mimeType || 'audio/webm' });
-          onStopRef.current(timeRef.current, blob);
-          chunksRef.current = [];
-          timeRef.current = 0;
-          setTime(0);
-        };
-        
-        mediaRecorder.start(100); // collect 100ms chunks of data
-
-        // Setup Web Audio API for visualizer
-        const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-        if (!AudioContext) return;
-        
-        audioContextRef.current = new AudioContext();
-        analyserRef.current = audioContextRef.current.createAnalyser();
-        analyserRef.current.fftSize = 128;
-        
-        sourceRef.current = audioContextRef.current.createMediaStreamSource(stream);
-        sourceRef.current.connect(analyserRef.current);
-        
-        const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
-        const currentValues = new Float32Array(visualizerBars);
-        const smoothing = 0.7;
-        
-        const updateVisualizer = () => {
-          if (!analyserRef.current) return;
-          analyserRef.current.getByteFrequencyData(dataArray);
-          
-          for (let i = 0; i < visualizerBars; i++) {
-            const binIndex = Math.floor((i / visualizerBars) * (dataArray.length / 2));
-            const targetValue = dataArray[binIndex];
-            
-            currentValues[i] = currentValues[i] * smoothing + targetValue * (1 - smoothing);
-            
-            const height = 15 + (currentValues[i] / 255) * 85;
-            if (barsRef.current[i]) {
-              barsRef.current[i]!.style.height = `${height}%`;
-            }
-          }
-          animationFrameRef.current = requestAnimationFrame(updateVisualizer);
-        };
-        updateVisualizer();
-
-      }).catch((err) => {
-        console.error("Failed to acquire microphone access:", err);
-        if (timerRef.current) clearInterval(timerRef.current);
-        timeRef.current = 0;
-        setTime(0);
-        onStopRef.current(0, null);
-      });
-    } catch (err) {
-      console.error("Synchronous error acquiring microphone:", err);
-      if (timerRef.current) clearInterval(timerRef.current);
-      timeRef.current = 0;
-      setTime(0);
-      onStopRef.current(0, null);
-    }
-  } else {
+    } else {
       if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = null;
       }
       
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
-        mediaRecorderRef.current.stop(); // This triggers onstop, which calls onStopRef
-      } else {
-        // If it never started
+        mediaRecorderRef.current.stop(); // This triggers onstop
+      } else if (!mediaRecorderRef.current) {
+        // If recording never properly started
         onStopRef.current(timeRef.current, null);
         timeRef.current = 0;
         setTime(0);
       }
-
-      // Cleanup visualizer
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-        animationFrameRef.current = null;
-      }
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-        streamRef.current = null;
-      }
-      if (sourceRef.current) {
-        sourceRef.current.disconnect();
-        sourceRef.current = null;
-      }
-      if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
-        audioContextRef.current.close();
-        audioContextRef.current = null;
-      }
-      
-      barsRef.current.forEach(bar => {
-        if (bar) bar.style.height = '15%';
-      });
     }
-
+    
     return () => {
-      isRecordingRef.current = false;
       if (timerRef.current) clearInterval(timerRef.current);
-      if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-      }
-      if (sourceRef.current) {
-        sourceRef.current.disconnect();
-      }
-      if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
-        audioContextRef.current.close();
-      }
     };
-  }, [isRecording, visualizerBars]);
+  }, [isRecording]);
+
+  const handleStreamReady = (stream: MediaStream) => {
+    try {
+      // Find the best supported audio format
+      let mimeType = '';
+      if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+        mimeType = 'audio/webm;codecs=opus';
+      } else if (MediaRecorder.isTypeSupported('audio/webm')) {
+        mimeType = 'audio/webm';
+      } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+        mimeType = 'audio/mp4';
+      }
+
+      const mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+      mediaRecorderRef.current = mediaRecorder;
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
+      };
+
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: mediaRecorder.mimeType || 'audio/webm' });
+        onStopRef.current(timeRef.current, blob);
+        chunksRef.current = [];
+        timeRef.current = 0;
+        setTime(0);
+        mediaRecorderRef.current = null;
+      };
+
+      mediaRecorder.start(100);
+    } catch (err) {
+      console.error("Synchronous error starting MediaRecorder:", err);
+      onStopRef.current(timeRef.current, null);
+    }
+  };
+
+  const handleStreamError = (error: Error) => {
+    console.error("Failed to acquire microphone access:", error);
+    if (timerRef.current) clearInterval(timerRef.current);
+    timeRef.current = 0;
+    setTime(0);
+    onStopRef.current(0, null);
+  };
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -369,17 +279,17 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
         <div className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
         <span className="font-mono text-sm text-white/80">{formatTime(time)}</span>
       </div>
-      <div className="w-full h-10 flex items-center justify-center gap-0.5 px-4">
-        {[...Array(visualizerBars)].map((_, i) => (
-          <div
-            key={i}
-            ref={el => barsRef.current[i] = el}
-            className="w-0.5 rounded-full bg-white/50"
-            style={{
-              height: '15%',
-            }}
-          />
-        ))}
+      <div className="w-full h-12 flex items-center justify-center px-4">
+        <LiveWaveform 
+          active={isRecording}
+          onStreamReady={handleStreamReady}
+          onError={handleStreamError}
+          mode="scrolling"
+          height={40}
+          barWidth={3}
+          barGap={2}
+          barColor="rgba(255, 255, 255, 0.8)"
+        />
       </div>
     </div>
   );
@@ -426,7 +336,7 @@ interface PromptInputContextType {
 const PromptInputContext = React.createContext<PromptInputContextType>({
   isLoading: false,
   value: "",
-  setValue: () => {},
+  setValue: () => { },
   maxHeight: 240,
   onSubmit: undefined,
   disabled: false,
@@ -489,7 +399,7 @@ const PromptInput = React.forwardRef<HTMLDivElement, PromptInputProps>(
           <div
             ref={ref}
             className={cn(
-              "rounded-3xl border border-[#444444] bg-[#1F2023] p-2 shadow-[0_8px_30px_rgba(0,0,0,0.24)] transition-all duration-300",
+              "rounded-3xl border border-[#444444] bg-[#1F2023] p-2 shadow-[0_8px_30px_rgba(0,0,0,0.24)] transition-all duration-300 flex flex-col",
               isLoading && "border-red-500/70",
               className
             )}
@@ -552,7 +462,7 @@ const PromptInputTextarea: React.FC<PromptInputTextareaProps & React.ComponentPr
   );
 };
 
-interface PromptInputActionsProps extends React.HTMLAttributes<HTMLDivElement> {}
+interface PromptInputActionsProps extends React.HTMLAttributes<HTMLDivElement> { }
 const PromptInputActions: React.FC<PromptInputActionsProps> = ({ children, className, ...props }) => (
   <div className={cn("flex items-center gap-2", className)} {...props}>
     {children}
@@ -563,6 +473,7 @@ interface PromptInputActionProps extends React.ComponentProps<typeof Tooltip> {
   tooltip: React.ReactNode;
   children: React.ReactNode;
   side?: "top" | "bottom" | "left" | "right";
+  className?: string;
 }
 const PromptInputAction: React.FC<PromptInputActionProps> = ({
   tooltip,
@@ -604,7 +515,7 @@ interface PromptInputBoxProps {
   className?: string;
 }
 export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref: React.Ref<HTMLDivElement>) => {
-  const { onSend = () => {}, isLoading = false, placeholder = "Type your message here...", className } = props;
+  const { onSend = () => { }, isLoading = false, placeholder = "Type your message here...", className } = props;
   const [input, setInput] = React.useState("");
   const [files, setFiles] = React.useState<File[]>([]);
   const [filePreviews, setFilePreviews] = React.useState<Record<string, string>>({});
@@ -713,7 +624,7 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
   };
 
   const isRecordingRef = React.useRef(isRecording);
-  
+
   React.useEffect(() => {
     isRecordingRef.current = isRecording;
   }, [isRecording]);
@@ -724,7 +635,7 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
 
   const handleStopRecording = async (duration: number, audioBlob: Blob | null) => {
     setIsRecording(false);
-    
+
     if (audioBlob && audioBlob.size > 0) {
       setIsTranscribing(true);
       try {
@@ -736,7 +647,7 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
         // For OpenAI API, we can send webm or mp4 directly
         formData.append("file", audioBlob, `audio.${ext}`);
         formData.append("model", "whisper-large-v3");
-        
+
         const apiKey = import.meta.env.VITE_GROQ_API_KEY;
         if (!apiKey || apiKey === "your_groq_api_key_here") {
           throw new Error("Groq API Key is missing. Please set VITE_GROQ_API_KEY in your .env file.");
@@ -789,11 +700,11 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
           const target = e.target as HTMLElement;
           // Don't focus if clicking on buttons or inputs
           if (target.closest('button') || target.closest('a') || target.tagName === 'INPUT') return;
-          
+
           // Fallback to finding the textarea manually and focusing it
-          const container = typeof ref === 'function' ? promptBoxRef.current : ((ref as React.RefObject<HTMLDivElement>)?.current || promptBoxRef.current);
+          const container = e.currentTarget as HTMLElement;
           const textarea = container?.querySelector('textarea');
-          
+
           if (textarea && !isRecording) {
             if (target.tagName !== 'TEXTAREA') {
               e.preventDefault(); // Prevent native focus logic from overriding us
@@ -836,7 +747,7 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
 
         <div
           className={cn(
-            "transition-all duration-300",
+            "transition-all duration-300 w-full flex-1 flex flex-col justify-center",
             isRecording ? "opacity-50 pointer-events-none" : "opacity-100"
           )}
         >
@@ -845,14 +756,14 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
               isTranscribing
                 ? "Transcribing..."
                 : showSearch
-                ? "Search the web..."
-                : showThink
-                ? "Think deeply..."
-                : showCanvas
-                ? "Create on canvas..."
-                : placeholder
+                  ? "Search the web..."
+                  : showThink
+                    ? "Think deeply..."
+                    : showCanvas
+                      ? "Create on canvas..."
+                      : placeholder
             }
-            className="text-base"
+            className="text-base flex-1 h-full w-full"
           />
         </div>
 
@@ -1003,10 +914,10 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
               isLoading
                 ? "Stop generation"
                 : isRecording
-                ? "Stop recording"
-                : hasContent
-                ? "Send message"
-                : "Voice message"
+                  ? "Stop recording"
+                  : hasContent
+                    ? "Send message"
+                    : "Speech to Text"
             }
           >
             <Button
@@ -1017,8 +928,8 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
                 isRecording
                   ? "bg-transparent hover:bg-gray-600/30 text-red-500 hover:text-red-400"
                   : hasContent
-                  ? "bg-white hover:bg-white/80 text-[#1F2023]"
-                  : "bg-transparent hover:bg-gray-600/30 text-[#9CA3AF] hover:text-[#D1D5DB]"
+                    ? "bg-white hover:bg-white/80 text-[#1F2023]"
+                    : "bg-transparent hover:bg-gray-600/30 text-[#9CA3AF] hover:text-[#D1D5DB]"
               )}
               onClick={() => {
                 if (isRecording) setIsRecording(false);

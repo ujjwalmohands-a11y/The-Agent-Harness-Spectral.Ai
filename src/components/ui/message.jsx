@@ -38,13 +38,18 @@ const MessageAvatar = ({
 const MessageContent = ({
   children,
   markdown = false,
+  role = 'system',
   className,
   ...props
 }) => {
-  const classNames = cn(
-    "rounded-lg p-2 text-foreground bg-secondary prose break-words whitespace-normal",
-    className
-  )
+  const baseClasses = "px-4 py-2.5 text-[15px] leading-relaxed break-words whitespace-pre-wrap max-w-none";
+  
+  // Clean Nuxt UI aesthetic: solid soft color for user, minimal/transparent for system
+  const roleClasses = role === 'user' 
+    ? "rounded-2xl bg-white/10 text-white rounded-br-sm"
+    : "text-gray-200 prose prose-invert";
+
+  const classNames = cn(baseClasses, roleClasses, className);
 
   return markdown ? (
     <Markdown className={classNames} {...props}>

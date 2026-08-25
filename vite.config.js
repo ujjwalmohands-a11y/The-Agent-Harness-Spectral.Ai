@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react'
 import path from 'path'
 
 // https://vite.dev/config/
+// Force vite restart to clear import cache for @base-ui/react
 export default defineConfig({
   plugins: [react()],
   resolve: {
