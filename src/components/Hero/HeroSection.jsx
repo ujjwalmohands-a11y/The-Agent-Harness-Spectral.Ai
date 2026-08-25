@@ -10,6 +10,9 @@ import DotField from './DotField';
 import { CoverflowCarousel } from './CoverflowCarousel';
 import { NavBar } from '@/components/ui/tubelight-navbar';
 import { PromptInputBox } from '@/components/ui/ai-prompt-box';
+import { BorderBeam } from '@/components/ui/border-beam';
+import CurvedLoop from './CurvedLoop';
+import './MinimalHero.css';
 
 const PRESETS = {
   Nebula: {
@@ -277,7 +280,7 @@ const NumberProp = ({ label, value, onChange, step = 0.1, min = 0, max = Infinit
       <span className="text-white">{label}=</span>
       <span className="text-white ml-1">{"{"}</span>
       <div
-        className="inline-flex items-center bg-black/30 hover:bg-black/50 transition-colors rounded px-1.5 py-0.5 mx-0.5 text-xs text-cyan-300 border border-white/5 shadow-inner leading-none cursor-ew-resize select-none"
+        className="inline-flex items-center bg-black/30 hover:bg-black/50 transition-colors rounded px-1.5 py-0.5 mx-0.5 text-[10px] sm:text-xs text-cyan-300 border border-white/5 shadow-inner leading-none cursor-ew-resize select-none"
         onPointerDown={handlePointerDown}
       >
         <input
@@ -297,7 +300,7 @@ const NumberProp = ({ label, value, onChange, step = 0.1, min = 0, max = Infinit
           }}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
-          className="bg-transparent outline-none w-[45px] text-center text-cyan-300 font-mono transition-all duration-300 m-0 p-0"
+          className="bg-transparent outline-none w-[40px] sm:w-[45px] text-center text-cyan-300 font-mono transition-all duration-300 m-0 p-0 text-[10px] sm:text-xs"
         />
       </div>
       <span className="text-white">{"}"}</span>
@@ -348,6 +351,8 @@ export default function HeroSection() {
   const navigate = useNavigate();
   const [isTerminalOpen, setIsTerminalOpen] = useState(false);
   const [isTeamOpen, setIsTeamOpen] = useState(false);
+  const [heroPrompt, setHeroPrompt] = useState('');
+  const [isChatActive, setIsChatActive] = useState(false);
 
   const navItems = [
     { name: 'Home', url: '/', icon: Home },
@@ -427,35 +432,35 @@ export default function HeroSection() {
       {/* Floating Theme Button */}
       <button
         onClick={() => { setIsTerminalOpen(!isTerminalOpen); setIsTeamOpen(false); }}
-        className="fixed right-6 bottom-6 z-50 flex items-center gap-2 px-4 py-3 rounded-full bg-black/40 border border-white/10 hover:bg-black/70 backdrop-blur-xl transition-all duration-300 shadow-[0_8px_32px_rgba(0,0,0,0.5)] hover:shadow-[0_8px_40px_var(--theme-glow)] text-white font-medium text-sm group"
+        className="fixed right-4 bottom-24 sm:right-6 sm:bottom-6 z-50 flex items-center gap-2 px-3 py-2 sm:px-3 sm:py-2.5 rounded-full bg-black/40 border border-white/10 hover:bg-black/70 backdrop-blur-xl transition-all duration-300 shadow-[0_8px_32px_rgba(0,0,0,0.5)] hover:shadow-[0_8px_40px_var(--theme-glow)] text-white font-medium text-[10px] sm:text-xs group"
       >
         <Palette className="w-4 h-4 text-[var(--theme-color)] group-hover:scale-110 transition-transform" />
         Change Theme
       </button>
 
       {/* Foreground */}
-      <div className="relative z-20 pointer-events-none">
+      <div className="relative z-20">
         {/* Main Content */}
         <main className="w-full max-w-5xl mx-auto px-6 flex justify-center items-center relative z-20 min-h-screen">
 
           {/* Code Editor Window */}
           <div
             className={`relative w-full group transition-all duration-700 ease-out ${isTerminalOpen
-              ? 'opacity-100 translate-y-0 scale-100 blur-none pointer-events-auto'
-              : 'opacity-0 translate-y-24 scale-95 blur-md pointer-events-none'
+              ? 'opacity-100 translate-y-0 scale-100 blur-none pointer-events-auto z-30'
+              : 'opacity-0 translate-y-24 scale-95 blur-md pointer-events-none -z-10'
               }`}
           >
             {/* Ambient Glow behind the terminal */}
             <div className="absolute -inset-1 bg-[var(--theme-color)] rounded-[20px] blur-[80px] opacity-20 group-hover:opacity-40 transition duration-1000 group-hover:duration-200" />
 
-            <div className="aspect-[4/3] rounded-2xl bg-black/40 backdrop-blur-3xl border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.3)] flex flex-col font-mono text-[12px] sm:text-[13px] text-gray-300 overflow-hidden relative z-20 transition-all duration-500 hover:bg-black/50">
+            <div className="aspect-[4/5] sm:aspect-[4/3] md:aspect-[16/9] lg:aspect-[21/9] max-h-[60vh] rounded-2xl bg-black/40 backdrop-blur-3xl border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.3)] flex flex-col font-mono text-[10px] sm:text-[11px] lg:text-[12px] text-gray-300 overflow-hidden relative z-20 transition-all duration-500 hover:bg-black/50">
 
               {/* Window Header */}
-              <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.05] bg-white/[0.01]">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.05] bg-white/[0.01]">
                 <div className="flex gap-2">
-                  <div className="w-2.5 h-2.5 rounded-full bg-white/20 hover:bg-red-400 transition-colors" />
-                  <div className="w-2.5 h-2.5 rounded-full bg-white/20 hover:bg-amber-400 transition-colors" />
-                  <div className="w-2.5 h-2.5 rounded-full bg-white/20 hover:bg-emerald-400 transition-colors" />
+                  <div className="w-2 h-2 rounded-full bg-white/20 hover:bg-red-400 transition-colors" />
+                  <div className="w-2 h-2 rounded-full bg-white/20 hover:bg-amber-400 transition-colors" />
+                  <div className="w-2 h-2 rounded-full bg-white/20 hover:bg-emerald-400 transition-colors" />
                 </div>
                 <div className="flex items-center gap-3">
                   <button onClick={() => setConfig(PRESETS[activePreset])} className="text-gray-500 hover:text-white transition-colors z-20 relative" title="Reset to Preset">
@@ -469,7 +474,7 @@ export default function HeroSection() {
 
               {/* Code Content */}
               {activeTab === 'ColorBends' ? (
-                <div className="px-6 py-3 sm:py-4 leading-[1.6] overflow-hidden flex-1 flex flex-col justify-center">
+                <div className="px-4 sm:px-6 py-2 sm:py-3 leading-[1.5] overflow-x-auto flex-1 flex flex-col justify-center">
                   <div>
                     <span className="text-white font-semibold">import</span> {'{ '}
                     <span className="text-purple-400">ColorBends</span>
@@ -519,10 +524,7 @@ export default function HeroSection() {
                     <NumberProp label="speed" value={config.speed} onChange={v => setConfig({ ...config, speed: v })} step={0.01} max={5} />
                     <NumberProp label="frequency" value={config.frequency} onChange={v => setConfig({ ...config, frequency: v })} step={0.1} max={10} />
                     <NumberProp label="noise" value={config.noise} onChange={v => setConfig({ ...config, noise: v })} step={0.01} max={2} />
-                    <NumberProp label="bandWidth" value={config.bandWidth} onChange={v => setConfig({ ...config, bandWidth: v })} step={0.01} max={2} />
                     <NumberProp label="rotation" min={-360} max={360} value={config.rotation} onChange={v => setConfig({ ...config, rotation: v })} step={1} />
-                    <NumberProp label="fadeTop" value={config.fadeTop || 0.75} onChange={v => setConfig({ ...config, fadeTop: v })} step={0.01} max={1} />
-                    <NumberProp label="iterations" min={1} max={10} value={config.iterations} onChange={v => setConfig({ ...config, iterations: v })} step={1} />
                     <NumberProp label="intensity" value={config.intensity} onChange={v => setConfig({ ...config, intensity: v })} step={0.1} max={5} />
                   </div>
 
@@ -531,7 +533,7 @@ export default function HeroSection() {
                   <div>{'}'}</div>
                 </div>
               ) : (
-                <div className="px-6 py-3 sm:py-4 leading-[1.6] overflow-hidden flex-1 flex flex-col justify-center">
+                <div className="px-4 sm:px-6 py-2 sm:py-3 leading-[1.5] overflow-x-auto flex-1 flex flex-col justify-center">
                   <div>
                     <span className="text-white font-semibold">import</span> {'{ '}
                     <span className="text-purple-400">DotField</span>
@@ -562,8 +564,8 @@ export default function HeroSection() {
               )}
 
               {/* Footer Tabs */}
-              <div className="flex items-center justify-between px-5 py-4 mt-auto border-t border-white/[0.05] bg-white/[0.01]">
-                <div className="flex gap-1 text-xs font-medium">
+              <div className="flex items-center justify-between px-3 sm:px-5 py-2 sm:py-3 mt-auto border-t border-white/[0.05] bg-white/[0.01]">
+                <div className="flex gap-1 text-[10px] sm:text-xs font-medium overflow-x-auto custom-scrollbar pb-1 sm:pb-0 max-w-[70%] sm:max-w-none">
                   {Object.keys(PRESETS).map(preset => (
                     <button
                       key={preset}
@@ -580,7 +582,7 @@ export default function HeroSection() {
                     </button>
                   ))}
                 </div>
-                <div className="text-xs text-gray-500 font-mono hidden sm:block">
+                <div className="text-[10px] sm:text-xs text-gray-500 font-mono hidden sm:block whitespace-nowrap ml-2">
                   ↔ Every value is editable
                 </div>
               </div>
@@ -590,9 +592,9 @@ export default function HeroSection() {
 
           {/* Team Window */}
           <div
-            className={`absolute w-full max-w-3xl group transition-all duration-700 ease-out z-30 ${isTeamOpen
-              ? 'opacity-100 translate-y-0 scale-100 blur-none pointer-events-auto'
-              : 'opacity-0 translate-y-24 scale-95 blur-md pointer-events-none'
+            className={`absolute w-full max-w-3xl group transition-all duration-700 ease-out ${isTeamOpen
+              ? 'opacity-100 translate-y-0 scale-100 blur-none pointer-events-auto z-30'
+              : 'opacity-0 translate-y-24 scale-95 blur-md pointer-events-none -z-10'
               }`}
           >
             <div className="absolute -inset-1 bg-[var(--theme-color)] rounded-[20px] blur-[80px] opacity-20 transition duration-1000" />
@@ -630,23 +632,37 @@ export default function HeroSection() {
             </div>
           </div>
 
-          {/* AI Chat Box */}
+          {/* Main Title Area */}
           <div
-            className={`absolute bottom-12 w-full max-w-2xl px-6 transition-all duration-700 ease-out z-10 ${
-              (!isTerminalOpen && !isTeamOpen)
-                ? 'opacity-100 translate-y-0 scale-100 pointer-events-auto'
-                : 'opacity-0 translate-y-24 scale-95 pointer-events-none'
-            }`}
+            className={`absolute inset-0 flex flex-col items-center justify-center transition-all duration-700 ease-out ${(!isTerminalOpen && !isTeamOpen)
+              ? 'opacity-100 translate-y-0 scale-100 pointer-events-auto z-20'
+              : 'opacity-0 -translate-y-24 scale-95 pointer-events-none -z-10'
+              }`}
           >
-            <div className="relative group">
+            <div className="text-content flex flex-col items-center w-full max-w-xl mx-auto">
+              {/* 1. Main Title */}
+              <h1 className="main-title text-center">Calm delegation.</h1>
+
+              {/* 2. Professional Subtext */}
+              <p className="subtitle text-center">
+                <span className="brand-tag">Spectral AI • Guided by TrueForge</span>
+                Let your models query, test, and build. Never worry about what they break.
+              </p>
+
+              {/* 3. AI Chat Box */}
+              <div className="relative group w-full mt-4">
                <div className="absolute -inset-2 bg-[var(--theme-color)] rounded-[30px] blur-xl opacity-20 group-hover:opacity-40 transition duration-500 pointer-events-none" />
-               <PromptInputBox 
-                 onSend={(message, files) => {
-                   navigate('/chat', { state: { initialPrompt: message } });
-                 }} 
-                 placeholder="How can I help you build today?"
-                 className="relative z-10 shadow-2xl border-white/10 bg-black/60 backdrop-blur-2xl"
-               />
+                <div className="relative w-full rounded-[30px]">
+                  <PromptInputBox 
+                    onSend={(message, files) => {
+                      navigate('/chat', { state: { initialPrompt: message } });
+                    }} 
+                    placeholder="What do you want to build today?"
+                    className="relative z-10 shadow-2xl border-white/10 bg-black/60 backdrop-blur-2xl text-[11px] sm:text-[13px] py-3 sm:py-4"
+                  />
+                  <BorderBeam size="md" colorVariant="colorful" className="pointer-events-none" />
+                </div>
+              </div>
             </div>
           </div>
         </main>
