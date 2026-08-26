@@ -16,7 +16,7 @@ import { Sidebar } from "@/components/ui/sidebar";
 import { ThemeSwitcher } from "@/components/ui/apple-liquid-glass-switcher";
 import { TrueForge } from '@truefoundry/trueforge-sdk';
 
-const tfClient = new TrueForge({ baseUrl: '/' });
+const tfClient = new TrueForge({ baseUrl: '/api/v1' });
 
 const generateId = () => {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
