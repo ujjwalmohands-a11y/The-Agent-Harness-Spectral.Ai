@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, GitBranch, ChevronDown, RotateCcw, Command, Palette } from 'lucide-react';
 import { ColorArea, ColorPicker, ColorSlider, ColorSwatch, Label } from "@heroui/react";
@@ -639,9 +640,37 @@ export default function HeroSection() {
               : 'opacity-0 -translate-y-24 scale-95 pointer-events-none -z-10'
               }`}
           >
-            <div className="text-content flex flex-col items-center w-full max-w-xl mx-auto">
+            {/* Scrim / Vignette for Text Legibility */}
+            <div className="absolute inset-0 pointer-events-none" style={{
+              background: 'radial-gradient(ellipse at center, rgba(5, 8, 15, 0.5) 0%, rgba(5, 8, 15, 0.2) 15%, transparent 35%)'
+            }} />
+
+            <div className="text-content flex flex-col items-center w-full max-w-2xl mx-auto pb-32 relative z-10">
+
               {/* 1. Main Title */}
-              <h1 className="main-title text-center">Calm delegation.</h1>
+              <h1
+                className="main-title text-center whitespace-nowrap relative z-10"
+                style={{
+                  textShadow: '0 4px 32px rgba(8, 15, 30, 0.9), 0 2px 12px rgba(8, 15, 30, 0.95)'
+                }}
+              >
+                <motion.span
+                  className="text-[#F8F9FA] font-medium tracking-tight inline-block"
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
+                >
+                  Calm
+                </motion.span>{' '}
+                <motion.span
+                  className="text-[var(--theme-color)] font-semibold tracking-tight inline-block"
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: 0.18 }}
+                >
+                  delegation.
+                </motion.span>
+              </h1>
 
               {/* 2. Professional Subtext */}
               <p className="subtitle text-center">
@@ -651,13 +680,13 @@ export default function HeroSection() {
 
               {/* 3. AI Chat Box */}
               <div className="relative group w-full mt-4">
-               <div className="absolute -inset-2 bg-[var(--theme-color)] rounded-[30px] blur-xl opacity-20 group-hover:opacity-40 transition duration-500 pointer-events-none" />
+                <div className="absolute -inset-2 bg-[var(--theme-color)] rounded-[30px] blur-xl opacity-20 group-hover:opacity-40 transition duration-500 pointer-events-none" />
                 <div className="relative w-full rounded-[30px]">
-                  <PromptInputBox 
+                  <PromptInputBox
                     onSend={(message, files) => {
                       navigate('/chat', { state: { initialPrompt: message } });
-                    }} 
-                    placeholder="What do you want to build today?"
+                    }}
+                    placeholder="What shall we look into today?"
                     className="relative z-10 shadow-2xl border-white/10 bg-black/60 backdrop-blur-2xl text-[11px] sm:text-[13px] py-3 sm:py-4"
                   />
                   <BorderBeam size="md" colorVariant="colorful" className="pointer-events-none" />

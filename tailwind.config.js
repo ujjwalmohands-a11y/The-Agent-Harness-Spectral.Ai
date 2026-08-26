@@ -24,5 +24,9 @@ export default {
     },
   },
   darkMode: "class",
-  plugins: [],
+  plugins: [
+    function({ addVariant }) {
+      addVariant('dim', '.dim &');
+    }
+  ],
 }

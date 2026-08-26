@@ -65,7 +65,7 @@ export default function MinimalHero() {
               ref={inputRef}
               type="text"
               className="minimal-input"
-              placeholder="What do you want to build today?"
+              placeholder="What shall we look into today?"
               onKeyDown={handleSearch}
             />
             <button className="btn-submit" onClick={handleSearch}>

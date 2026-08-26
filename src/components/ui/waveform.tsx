@@ -67,6 +67,16 @@ export const LiveWaveform = ({
   const gradientCacheRef = useRef<CanvasGradient | null>(null)
   const lastWidthRef = useRef(0)
 
+  const onStreamReadyRef = useRef(onStreamReady)
+  const onErrorRef = useRef(onError)
+  const onStreamEndRef = useRef(onStreamEnd)
+
+  useEffect(() => {
+    onStreamReadyRef.current = onStreamReady
+    onErrorRef.current = onError
+    onStreamEndRef.current = onStreamEnd
+  }, [onStreamReady, onError, onStreamEnd])
+
   const heightStyle = typeof height === "number" ? `${height}px` : height
 
   // Handle canvas resizing
@@ -113,7 +123,7 @@ export const LiveWaveform = ({
         const processingData = []
         const barCount = Math.floor(
           (containerRef.current?.getBoundingClientRect().width || 200) /
-            (barWidth + barGap)
+          (barWidth + barGap)
         )
 
         if (mode === "static") {
@@ -234,7 +244,7 @@ export const LiveWaveform = ({
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((track) => track.stop())
         streamRef.current = null
-        onStreamEnd?.()
+        onStreamEndRef.current?.()
       }
       if (
         audioContextRef.current &&
@@ -250,24 +260,32 @@ export const LiveWaveform = ({
       return
     }
 
+    let isCancelled = false
+
     const setupMicrophone = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           audio: deviceId
             ? {
-                deviceId: { exact: deviceId },
-                echoCancellation: true,
-                noiseSuppression: true,
-                autoGainControl: true,
-              }
+              deviceId: { exact: deviceId },
+              echoCancellation: true,
+              noiseSuppression: true,
+              autoGainControl: true,
+            }
             : {
-                echoCancellation: true,
-                noiseSuppression: true,
-                autoGainControl: true,
-              },
+              echoCancellation: true,
+              noiseSuppression: true,
+              autoGainControl: true,
+            },
         })
+
+        if (isCancelled) {
+          stream.getTracks().forEach((track) => track.stop())
+          return
+        }
+
         streamRef.current = stream
-        onStreamReady?.(stream)
+        onStreamReadyRef.current?.(stream)
 
         const AudioContextConstructor =
           window.AudioContext ||
@@ -287,17 +305,20 @@ export const LiveWaveform = ({
         // Clear history when starting
         historyRef.current = []
       } catch (error) {
-        onError?.(error as Error)
+        if (!isCancelled) {
+          onErrorRef.current?.(error as Error)
+        }
       }
     }
 
     setupMicrophone()
 
     return () => {
+      isCancelled = true
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((track) => track.stop())
         streamRef.current = null
-        onStreamEnd?.()
+        onStreamEndRef.current?.()
       }
       if (
         audioContextRef.current &&
@@ -316,9 +337,6 @@ export const LiveWaveform = ({
     deviceId,
     fftSize,
     smoothingTimeConstant,
-    onError,
-    onStreamReady,
-    onStreamEnd,
   ])
 
   // Animation loop

@@ -60,7 +60,7 @@ function PromptInput({
         value={{
           isLoading,
           value: value ?? internalValue,
-          setValue: onValueChange ?? handleChange,
+          setValue: handleChange,
           maxHeight,
           onSubmit,
           disabled,
