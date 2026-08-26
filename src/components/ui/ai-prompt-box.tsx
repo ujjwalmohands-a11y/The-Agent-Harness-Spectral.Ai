@@ -663,23 +663,15 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
         // For OpenAI API, we can send webm or mp4 directly
         formData.append("file", audioBlob, `audio.${ext}`);
         formData.append("model", "whisper-large-v3");
-
-        const apiKey = import.meta.env.VITE_GROQ_API_KEY;
-        if (!apiKey || apiKey === "your_groq_api_key_here") {
-          throw new Error("Groq API Key is missing. Please set VITE_GROQ_API_KEY in your .env file.");
-        }
-
-        const response = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
+        
+        const response = await fetch("/api/transcribe", {
           method: "POST",
-          headers: {
-            "Authorization": `Bearer ${apiKey}`,
-          },
           body: formData
         });
 
         if (!response.ok) {
           const errData = await response.json().catch(() => null);
-          throw new Error(errData?.error?.message || `API Error: ${response.statusText}`);
+          throw new Error(errData?.error || `API Error: ${response.statusText}`);
         }
 
         const data = await response.json();
