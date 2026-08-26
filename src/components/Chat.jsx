@@ -64,6 +64,9 @@ export default function Chat() {
       } else if (event.type === 'model.message.delta' && event.content) {
         currentText += event.content;
         setMessages(prev => prev.map(msg => msg.id === botMsgId ? { ...msg, content: currentText } : msg));
+      } else if (event.type === 'turn.done' && event.state?.status === 'error') {
+        currentText += `\n\n[Backend Error: ${event.state.message}]\n\n*Note: If you see a reasoning_content error, the TrueForge backend currently has a bug with multi-turn chat for this model.*`;
+        setMessages(prev => prev.map(msg => msg.id === botMsgId ? { ...msg, content: currentText } : msg));
       }
     }
   };
@@ -80,27 +83,37 @@ export default function Chat() {
     setIsProcessing(true);
 
     try {
-      let currentSessionId = sessionId;
+      // Workaround for TrueForge backend bug with reasoning_content in history:
+      // Construct the previous history manually and inject it via system prompt, creating a new session.
+      let historyPrompt = "";
+      messages.forEach(m => {
+        if (m.role === 'user' || m.role === 'bot') {
+            historyPrompt += `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}\n\n`;
+        }
+      });
+      const systemPrompt = historyPrompt 
+        ? `You are a helpful assistant. Here is the previous conversation history:\n\n${historyPrompt}` 
+        : "You are a helpful assistant.";
 
-      if (!hasCreatedSession.current) {
-        const session = await tfClient.sessions.create({
-          agent: {
-            spec: {
-              model: { 
-                name: 'groq-for-trueforge-hackathon/gpt-oss-120b',
-                params: { maxTokens: 4096 }
-              },
-              config: {
-                askUserQuestions: { enabled: false },
-                generativeUi: { enabled: false }
-              }
+      const session = await tfClient.sessions.create({
+        agent: {
+          spec: {
+            model: { 
+              name: 'groq-for-trueforge-hackathon/gpt-oss-120b',
+              params: { maxTokens: 4096 }
+            },
+            systemPrompt: systemPrompt,
+            config: {
+              askUserQuestions: { enabled: false },
+              generativeUi: { enabled: false }
             }
           }
-        });
-        currentSessionId = session.data.id;
-        setSessionId(currentSessionId);
-        hasCreatedSession.current = true;
-      }
+        }
+      });
+      
+      const currentSessionId = session.data.id;
+      setSessionId(currentSessionId);
+      hasCreatedSession.current = true;
 
       const stream = await tfClient.sessions.createTurnStream(currentSessionId, {
         input: [{ type: 'user.message', content: textPayload }]
