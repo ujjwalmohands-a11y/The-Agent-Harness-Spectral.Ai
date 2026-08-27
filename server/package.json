@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node --experimental-loader ./fix-import-loader.mjs --require ./patch.cjs ./node_modules/@truefoundry/trueforge/dist/cli.js --port 8000"
   },
   "keywords": [],
   "author": "",

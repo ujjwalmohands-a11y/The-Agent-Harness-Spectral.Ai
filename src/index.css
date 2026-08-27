@@ -248,3 +248,291 @@ input[type="number"] {
 }
 
 @layer base {}
+@keyframes cover-in {
+  from {
+    opacity: 0;
+    transform: scale(1.08);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes cover-out {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+}
+
+@keyframes ti-in {
+  from {
+    opacity: 0;
+    transform: translateX(var(--dx));
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes ti-out {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(var(--dx));
+  }
+}
+
+/* Music Player Custom Styles */
+.card {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: center;
+}
+
+.mask {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  background: #18181b;
+  border: 1px solid #3b2354;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.3s ease;
+  flex-shrink: 0;
+}
+
+.mask.is-zoomed {
+  transform: scale(1.5);
+  z-index: 50;
+}
+
+.spin {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.cover {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.cover-enter {
+  animation: cover-in 0.5s ease-out forwards;
+}
+
+.cover-exit {
+  animation: cover-out 0.5s ease-out forwards;
+}
+
+.hole {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.hole-inner {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #09090b;
+  border: 1px solid #000;
+  box-shadow: inset 0 1px 2px rgba(255,255,255,0.1);
+}
+
+.info {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.scales {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.15;
+  pointer-events: none;
+  z-index: -1;
+  fill: #c084fc;
+}
+
+.track-info {
+  position: relative;
+  height: 40px;
+  overflow: hidden;
+  text-align: center;
+  width: 100%;
+}
+
+.ti-layer {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.ti-abs {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.artist {
+  font-size: 11px;
+  color: #c084fc;
+  margin: 0 0 2px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+}
+
+.track {
+  font-size: 13px;
+  font-weight: 700;
+  color: #e5e7eb;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+}
+
+.ti-enter {
+  animation: ti-in 0.4s ease-out forwards;
+}
+
+.ti-exit {
+  animation: ti-out 0.4s ease-out forwards;
+}
+
+.bar {
+  width: 100%;
+  height: 6px;
+  background: #1a1a1f;
+  border-radius: 9999px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+.bar:hover .bar-fill {
+  background: #a855f7;
+}
+
+.bar-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: #c084fc;
+  transition: background 0.2s ease;
+  border-radius: 9999px;
+}
+
+.time {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  font-size: 10px;
+  color: #71717a;
+  font-family: monospace;
+  margin-top: 2px;
+}
+
+.time .sep {
+  opacity: 0; /* Just hiding the separator for a cleaner look */
+  margin: 0 2px;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin-top: 8px;
+}
+
+.ctrl {
+  background: transparent;
+  border: none;
+  color: #a1a1aa;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s ease, transform 0.2s ease;
+  position: relative;
+}
+
+.ctrl:hover {
+  color: #e5e7eb;
+}
+
+.ctrl:active {
+  transform: scale(0.95);
+}
+
+.ctrl-play {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #c084fc;
+  color: #fff;
+  box-shadow: 0 0 15px rgba(168, 85, 247, 0.4);
+}
+
+.ctrl-play:hover {
+  background: #a855f7;
+  color: #fff;
+}
+
+.ctrl-toggle.is-active {
+  color: #c084fc;
+}
+
+.loop-one {
+  display: none;
+  position: absolute;
+  font-size: 7px;
+  font-weight: bold;
+}
+
+.mode-one .loop-one {
+  display: flex;
+}
+
+/* Radial Reveal Theme Toggle */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+

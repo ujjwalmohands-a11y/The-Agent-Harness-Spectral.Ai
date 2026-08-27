@@ -1,5 +1,6 @@
 import React from 'react';
 import { Bot, Shield, Zap, Terminal, ChevronRight } from 'lucide-react';
+import Footer1 from "@/components/ui/footer-section-1";
 import { RuixenGradientFooter } from './ui/ruixen-gradient-footer';
 import HeroSection from './Hero/HeroSection';
 
@@ -38,36 +39,8 @@ export default function Landing() {
       </section>
 
       {/* Footer */}
-      <RuixenGradientFooter gradientHeight="40vh" className="border-t border-white/5 bg-[#050508] px-5 py-10 text-gray-300">
-        <div className="flex justify-between max-w-[1000px] mx-auto flex-wrap gap-10">
-
-          {/* Left Section: Brand & Description */}
-          <div className="max-w-[300px]">
-            <h2 className="text-base font-bold text-white tracking-[1px] flex items-center gap-2.5 mb-[15px]">
-              <span className="inline-block w-4 h-4 bg-white"></span> TRUEFORGE
-            </h2>
-            <p className="text-sm text-gray-400 leading-relaxed">
-              The ultimate agent harness. Built for developers who need safety, control, and visibility.
-            </p>
-          </div>
-
-          {/* Right Section: Streamlined Links */}
-          <div className="flex gap-[60px]">
-            <div className="flex flex-col gap-3">
-              <h3 className="text-[13px] font-bold text-white mb-1 tracking-[0.5px]">RESOURCES</h3>
-              <a href="#" className="text-gray-400 text-[13px] uppercase transition-colors hover:text-white">Docs</a>
-              <a href="#" className="text-gray-400 text-[13px] uppercase transition-colors hover:text-white">API</a>
-              <a href="#" className="text-gray-400 text-[13px] uppercase transition-colors hover:text-white">GitHub Repo</a>
-            </div>
-
-            <div className="flex flex-col gap-3">
-              <h3 className="text-[13px] font-bold text-white mb-1 tracking-[0.5px]">HACKATHON</h3>
-              <a href="#" className="relative inline-block w-fit text-white font-semibold uppercase text-[13px] after:content-[''] after:absolute after:w-full after:scale-x-0 after:h-[2px] after:-bottom-1 after:left-0 after:bg-white after:origin-bottom-right after:transition-transform after:duration-300 after:ease-out hover:after:scale-x-100 hover:after:origin-bottom-left">My team</a>
-              <a href="#" className="text-gray-400 text-[13px] uppercase transition-colors hover:text-white">Demo Video</a>
-            </div>
-          </div>
-
-        </div>
+      <RuixenGradientFooter gradientHeight="40vh" className="bg-[#050508]">
+        <Footer1 />
       </RuixenGradientFooter>
     </div>
   );
