@@ -38,6 +38,7 @@ export default function Chat() {
   const [pendingApproval, setPendingApproval] = useState(null);
   const [executingAction, setExecutingAction] = useState(null);
   const hasCreatedSession = useRef(false);
+  const mockTimerRef = useRef(null);
 
   // UI State
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -47,11 +48,35 @@ export default function Chat() {
   const initialPrompt = location.state?.initialPrompt;
   const hasInitialized = useRef(false);
 
+  // Clean up mock timer on unmount
+  useEffect(() => {
+    return () => {
+      if (mockTimerRef.current) {
+        clearTimeout(mockTimerRef.current);
+        mockTimerRef.current = null;
+      }
+    };
+  }, []);
+
+  // Helper to forcefully tear down all mock state and timers
+  const clearMockState = () => {
+    if (mockTimerRef.current) {
+      clearTimeout(mockTimerRef.current);
+      mockTimerRef.current = null;
+    }
+    if (pendingApproval?.isMock) setPendingApproval(null);
+    if (executingAction) setExecutingAction(null);
+  };
+
   const toggleMockApproval = () => {
-    if (pendingApproval || executingAction) {
-      setPendingApproval(null);
-      setExecutingAction(null);
-    } else {
+    // Never allow mock to overwrite real backend approval state
+    if (pendingApproval && !pendingApproval.isMock) return;
+
+    // Always allow cancelling mock state, even while processing
+    if (pendingApproval?.isMock || executingAction || mockTimerRef.current) {
+      clearMockState();
+    } else if (!isProcessing) {
+      // Only start new mock when nothing real is running
       setExecutingAction({
         actionName: 'Executing diagnostics...',
         steps: [
@@ -59,7 +84,8 @@ export default function Chat() {
           { text: 'Analyzing dependency tree...', status: 'loading' }
         ]
       });
-      setTimeout(() => {
+      mockTimerRef.current = setTimeout(() => {
+        mockTimerRef.current = null;
         setExecutingAction(null);
         setPendingApproval({
           isMock: true,
@@ -104,6 +130,9 @@ export default function Chat() {
 
   const submitMessage = async (textPayload) => {
     if (!textPayload || !textPayload.trim()) return;
+
+    // Clear any active mock state before starting real backend work
+    clearMockState();
 
     const userMsgId = generateId();
     setMessages((prev) => [
@@ -231,13 +260,21 @@ export default function Chat() {
             </span>
           </div>
           <div className="flex items-center gap-3">
-            <button
-              onClick={toggleMockApproval}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-full hover:bg-amber-500/20 transition-colors"
-            >
-              <TestTube className="w-3.5 h-3.5" />
-              Mock UI
-            </button>
+            {import.meta.env.DEV && (
+              <button
+                onClick={toggleMockApproval}
+                disabled={isProcessing || (pendingApproval && !pendingApproval.isMock)}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full border transition-colors",
+                  isProcessing || (pendingApproval && !pendingApproval.isMock)
+                    ? "text-zinc-400 dark:text-zinc-600 bg-zinc-100 dark:bg-zinc-800/30 border-zinc-200 dark:border-zinc-700 cursor-not-allowed opacity-50"
+                    : "text-amber-600 dark:text-amber-400 bg-amber-500/10 border-amber-500/20 hover:bg-amber-500/20"
+                )}
+              >
+                <TestTube className="w-3.5 h-3.5" />
+                Mock UI
+              </button>
+            )}
 
             <ThemeSwitcher />
           </div>
@@ -273,7 +310,13 @@ export default function Chat() {
                     <button
                       key={idx}
                       onClick={() => submitMessage(action.prompt)}
-                      className="flex flex-col text-left p-4 rounded-xl border border-zinc-200 dark:border-gray-800 dim:border-white/10 bg-white dark:bg-[#1a1a1f] dim:bg-white/5 hover:bg-zinc-50 dark:hover:bg-gray-800/80 transition-colors duration-500 delay-150 group shadow-sm"
+                      disabled={isProcessing || !!pendingApproval}
+                      className={cn(
+                        "flex flex-col text-left p-4 rounded-xl border transition-colors duration-500 delay-150 group shadow-sm",
+                        isProcessing || pendingApproval
+                          ? "border-zinc-200 dark:border-gray-800 dim:border-white/10 bg-zinc-50 dark:bg-[#1a1a1f]/50 dim:bg-white/3 opacity-50 cursor-not-allowed"
+                          : "border-zinc-200 dark:border-gray-800 dim:border-white/10 bg-white dark:bg-[#1a1a1f] dim:bg-white/5 hover:bg-zinc-50 dark:hover:bg-gray-800/80"
+                      )}
                     >
                       <span className="text-sm font-medium text-zinc-700 dark:text-gray-200 dim:text-white mb-1 group-hover:text-purple-500 dark:group-hover:text-purple-400 transition-colors duration-500 delay-150">{action.title}</span>
                       <span className="text-xs text-zinc-500 dark:text-gray-500 dim:text-gray-400">{action.desc}</span>
