@@ -58,19 +58,25 @@ export default function Chat() {
     };
   }, []);
 
-  const toggleMockApproval = () => {
-    // Never allow mock to interfere with real backend state
-    if (isProcessing || (pendingApproval && !pendingApproval.isMock)) return;
+  // Helper to forcefully tear down all mock state and timers
+  const clearMockState = () => {
+    if (mockTimerRef.current) {
+      clearTimeout(mockTimerRef.current);
+      mockTimerRef.current = null;
+    }
+    if (pendingApproval?.isMock) setPendingApproval(null);
+    if (executingAction) setExecutingAction(null);
+  };
 
-    if (pendingApproval || executingAction) {
-      // Cancel: clear the pending timer so the stale callback cannot fire
-      if (mockTimerRef.current) {
-        clearTimeout(mockTimerRef.current);
-        mockTimerRef.current = null;
-      }
-      setPendingApproval(null);
-      setExecutingAction(null);
-    } else {
+  const toggleMockApproval = () => {
+    // Never allow mock to overwrite real backend approval state
+    if (pendingApproval && !pendingApproval.isMock) return;
+
+    // Always allow cancelling mock state, even while processing
+    if (pendingApproval?.isMock || executingAction || mockTimerRef.current) {
+      clearMockState();
+    } else if (!isProcessing) {
+      // Only start new mock when nothing real is running
       setExecutingAction({
         actionName: 'Executing diagnostics...',
         steps: [
@@ -124,6 +130,9 @@ export default function Chat() {
 
   const submitMessage = async (textPayload) => {
     if (!textPayload || !textPayload.trim()) return;
+
+    // Clear any active mock state before starting real backend work
+    clearMockState();
 
     const userMsgId = generateId();
     setMessages((prev) => [
@@ -301,7 +310,13 @@ export default function Chat() {
                     <button
                       key={idx}
                       onClick={() => submitMessage(action.prompt)}
-                      className="flex flex-col text-left p-4 rounded-xl border border-zinc-200 dark:border-gray-800 dim:border-white/10 bg-white dark:bg-[#1a1a1f] dim:bg-white/5 hover:bg-zinc-50 dark:hover:bg-gray-800/80 transition-colors duration-500 delay-150 group shadow-sm"
+                      disabled={isProcessing || !!pendingApproval}
+                      className={cn(
+                        "flex flex-col text-left p-4 rounded-xl border transition-colors duration-500 delay-150 group shadow-sm",
+                        isProcessing || pendingApproval
+                          ? "border-zinc-200 dark:border-gray-800 dim:border-white/10 bg-zinc-50 dark:bg-[#1a1a1f]/50 dim:bg-white/3 opacity-50 cursor-not-allowed"
+                          : "border-zinc-200 dark:border-gray-800 dim:border-white/10 bg-white dark:bg-[#1a1a1f] dim:bg-white/5 hover:bg-zinc-50 dark:hover:bg-gray-800/80"
+                      )}
                     >
                       <span className="text-sm font-medium text-zinc-700 dark:text-gray-200 dim:text-white mb-1 group-hover:text-purple-500 dark:group-hover:text-purple-400 transition-colors duration-500 delay-150">{action.title}</span>
                       <span className="text-xs text-zinc-500 dark:text-gray-500 dim:text-gray-400">{action.desc}</span>
