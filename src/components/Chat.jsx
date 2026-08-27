@@ -38,6 +38,7 @@ export default function Chat() {
   const [pendingApproval, setPendingApproval] = useState(null);
   const [executingAction, setExecutingAction] = useState(null);
   const hasCreatedSession = useRef(false);
+  const mockTimerRef = useRef(null);
 
   // UI State
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -47,8 +48,26 @@ export default function Chat() {
   const initialPrompt = location.state?.initialPrompt;
   const hasInitialized = useRef(false);
 
+  // Clean up mock timer on unmount
+  useEffect(() => {
+    return () => {
+      if (mockTimerRef.current) {
+        clearTimeout(mockTimerRef.current);
+        mockTimerRef.current = null;
+      }
+    };
+  }, []);
+
   const toggleMockApproval = () => {
+    // Never allow mock to interfere with real backend state
+    if (isProcessing || (pendingApproval && !pendingApproval.isMock)) return;
+
     if (pendingApproval || executingAction) {
+      // Cancel: clear the pending timer so the stale callback cannot fire
+      if (mockTimerRef.current) {
+        clearTimeout(mockTimerRef.current);
+        mockTimerRef.current = null;
+      }
       setPendingApproval(null);
       setExecutingAction(null);
     } else {
@@ -59,7 +78,8 @@ export default function Chat() {
           { text: 'Analyzing dependency tree...', status: 'loading' }
         ]
       });
-      setTimeout(() => {
+      mockTimerRef.current = setTimeout(() => {
+        mockTimerRef.current = null;
         setExecutingAction(null);
         setPendingApproval({
           isMock: true,
@@ -231,13 +251,21 @@ export default function Chat() {
             </span>
           </div>
           <div className="flex items-center gap-3">
-            <button
-              onClick={toggleMockApproval}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-full hover:bg-amber-500/20 transition-colors"
-            >
-              <TestTube className="w-3.5 h-3.5" />
-              Mock UI
-            </button>
+            {import.meta.env.DEV && (
+              <button
+                onClick={toggleMockApproval}
+                disabled={isProcessing || (pendingApproval && !pendingApproval.isMock)}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full border transition-colors",
+                  isProcessing || (pendingApproval && !pendingApproval.isMock)
+                    ? "text-zinc-400 dark:text-zinc-600 bg-zinc-100 dark:bg-zinc-800/30 border-zinc-200 dark:border-zinc-700 cursor-not-allowed opacity-50"
+                    : "text-amber-600 dark:text-amber-400 bg-amber-500/10 border-amber-500/20 hover:bg-amber-500/20"
+                )}
+              >
+                <TestTube className="w-3.5 h-3.5" />
+                Mock UI
+              </button>
+            )}
 
             <ThemeSwitcher />
           </div>
