@@ -671,7 +671,8 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
 
         if (!response.ok) {
           const errData = await response.json().catch(() => null);
-          throw new Error(errData?.error || `API Error: ${response.statusText}`);
+          const errorMsg = errData?.error?.message || (typeof errData?.error === 'string' ? errData.error : JSON.stringify(errData?.error)) || response.statusText;
+          throw new Error(`API Error: ${errorMsg}`);
         }
 
         const data = await response.json();
@@ -695,7 +696,7 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
         isLoading={isLoading || isTranscribing}
         onSubmit={handleSubmit}
         className={cn(
-          "w-full bg-[#1F2023] border-[#444444] shadow-[0_8px_30px_rgba(0,0,0,0.24)] transition-all duration-300 ease-in-out cursor-text",
+          "w-full bg-transparent border-transparent shadow-none transition-all duration-300 ease-in-out cursor-text",
           (isRecording || isTranscribing) && "border-red-500/70 cursor-default",
           className
         )}
@@ -818,7 +819,7 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
             <PromptInputAction tooltip="Upload image">
               <button
                 onClick={() => uploadInputRef.current?.click()}
-                className="flex h-8 w-8 text-[#9CA3AF] cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-gray-600/30 hover:text-[#D1D5DB]"
+                className="flex h-8 w-8 text-zinc-500 dark:text-[#9CA3AF] dim:text-[#9CA3AF] cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-zinc-200 dark:hover:bg-gray-600/30 dim:hover:bg-gray-600/30 hover:text-zinc-900 dark:hover:text-[#D1D5DB] dim:hover:text-[#D1D5DB]"
                 disabled={isRecording}
               >
                 <Paperclip className="h-5 w-5 transition-colors" />
@@ -843,7 +844,7 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
                   "rounded-full transition-all flex items-center gap-1 px-2 py-1 border h-8",
                   showSearch
                     ? "bg-[#1EAEDB]/15 border-[#1EAEDB] text-[#1EAEDB]"
-                    : "bg-transparent border-transparent text-[#9CA3AF] hover:text-[#D1D5DB]"
+                    : "bg-transparent border-transparent text-zinc-500 dark:text-[#9CA3AF] dim:text-[#9CA3AF] hover:text-zinc-900 dark:hover:text-[#D1D5DB] dim:hover:text-[#D1D5DB]"
                 )}
               >
                 <div className="w-5 h-5 flex items-center justify-center flex-shrink-0">
@@ -879,7 +880,7 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
                   "rounded-full transition-all flex items-center gap-1 px-2 py-1 border h-8",
                   showThink
                     ? "bg-[#8B5CF6]/15 border-[#8B5CF6] text-[#8B5CF6]"
-                    : "bg-transparent border-transparent text-[#9CA3AF] hover:text-[#D1D5DB]"
+                    : "bg-transparent border-transparent text-zinc-500 dark:text-[#9CA3AF] dim:text-[#9CA3AF] hover:text-zinc-900 dark:hover:text-[#D1D5DB] dim:hover:text-[#D1D5DB]"
                 )}
               >
                 <div className="w-5 h-5 flex items-center justify-center flex-shrink-0">
@@ -915,7 +916,7 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
                   "rounded-full transition-all flex items-center gap-1 px-2 py-1 border h-8",
                   showCanvas
                     ? "bg-[#F97316]/15 border-[#F97316] text-[#F97316]"
-                    : "bg-transparent border-transparent text-[#9CA3AF] hover:text-[#D1D5DB]"
+                    : "bg-transparent border-transparent text-zinc-500 dark:text-[#9CA3AF] dim:text-[#9CA3AF] hover:text-zinc-900 dark:hover:text-[#D1D5DB] dim:hover:text-[#D1D5DB]"
                 )}
               >
                 <div className="w-5 h-5 flex items-center justify-center flex-shrink-0">
@@ -961,10 +962,10 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
               className={cn(
                 "h-8 w-8 rounded-full transition-all duration-200",
                 isRecording
-                  ? "bg-transparent hover:bg-gray-600/30 text-red-500 hover:text-red-400"
+                  ? "bg-transparent hover:bg-zinc-200 dark:hover:bg-gray-600/30 dim:hover:bg-gray-600/30 text-red-500 hover:text-red-600 dark:hover:text-red-400 dim:hover:text-red-400"
                   : hasContent
-                    ? "bg-white hover:bg-white/80 text-[#1F2023]"
-                    : "bg-transparent hover:bg-gray-600/30 text-[#9CA3AF] hover:text-[#D1D5DB]"
+                    ? "bg-[#c084fc] hover:bg-[#a855f7] text-white shadow-lg shadow-purple-900/20"
+                    : "bg-transparent hover:bg-zinc-200 dark:hover:bg-gray-600/30 dim:hover:bg-gray-600/30 text-zinc-500 dark:text-[#9CA3AF] dim:text-[#9CA3AF] hover:text-zinc-900 dark:hover:text-[#D1D5DB] dim:hover:text-[#D1D5DB]"
               )}
               onClick={() => {
                 if (isRecording) setIsRecording(false);
@@ -974,13 +975,13 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
               disabled={isLoading && !hasContent}
             >
               {isLoading ? (
-                <Square className="h-4 w-4 fill-[#1F2023] animate-pulse" />
+                <Square className="h-4 w-4 fill-current animate-pulse" />
               ) : isRecording ? (
                 <StopCircle className="h-5 w-5 text-red-500" />
               ) : hasContent ? (
-                <ArrowUp className="h-4 w-4 text-[#1F2023]" />
+                <ArrowUp className="h-4 w-4 text-current" />
               ) : (
-                <Mic className="h-5 w-5 text-[#1F2023] transition-colors" />
+                <Mic className="h-5 w-5 text-current transition-colors" />
               )}
             </Button>
           </PromptInputAction>

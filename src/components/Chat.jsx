@@ -6,7 +6,11 @@ import {
   Sparkles,
   PanelLeft,
   CheckCircle2,
-  XCircle
+  XCircle,
+  Mail,
+  Send,
+  X,
+  TestTube
 } from 'lucide-react';
 import { ChatContainerRoot, ChatContainerContent, ChatContainerScrollAnchor } from "@/components/ui/chat-container";
 import { Message, MessageAvatar, MessageContent } from "@/components/ui/message";
@@ -14,6 +18,7 @@ import { PromptInputBox } from "@/components/ui/ai-prompt-box";
 import { BorderBeam } from "@/components/ui/border-beam";
 import { Sidebar } from "@/components/ui/sidebar";
 import { ThemeSwitcher } from "@/components/ui/apple-liquid-glass-switcher";
+import { cn } from "@/lib/utils";
 import { TrueForge } from '@truefoundry/trueforge-sdk';
 
 const tfClient = new TrueForge({ baseUrl: import.meta.env.VITE_TRUEFORGE_URL || '/' });
@@ -22,7 +27,7 @@ const generateId = () => {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
     return crypto.randomUUID();
   }
-  return Math.random().toString(36).substring(2, 15);
+  return Date.now().toString(36) + Math.random().toString(36).substr(2);
 };
 
 export default function Chat() {
@@ -31,8 +36,9 @@ export default function Chat() {
   const [sessionId, setSessionId] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [pendingApproval, setPendingApproval] = useState(null);
+  const [executingAction, setExecutingAction] = useState(null);
   const hasCreatedSession = useRef(false);
-  
+
   // UI State
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const messagesEndRef = useRef(null);
@@ -40,6 +46,31 @@ export default function Chat() {
   const location = useLocation();
   const initialPrompt = location.state?.initialPrompt;
   const hasInitialized = useRef(false);
+
+  const toggleMockApproval = () => {
+    if (pendingApproval || executingAction) {
+      setPendingApproval(null);
+      setExecutingAction(null);
+    } else {
+      setExecutingAction({
+        actionName: 'Executing diagnostics...',
+        steps: [
+          { text: 'Read `package.json`', status: 'done' },
+          { text: 'Analyzing dependency tree...', status: 'loading' }
+        ]
+      });
+      setTimeout(() => {
+        setExecutingAction(null);
+        setPendingApproval({
+          isMock: true,
+          actionTitle: 'Irreversible Action Pending',
+          details: 'I am about to execute the following database drop:',
+          code: 'DROP TABLE production_users;',
+          emailPreview: null
+        });
+      }, 2500);
+    }
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -79,41 +110,22 @@ export default function Chat() {
       ...prev,
       { id: userMsgId, role: 'user', content: textPayload },
     ]);
-    
+
     setIsProcessing(true);
 
     try {
-      // Workaround for TrueForge backend bug with reasoning_content in history:
-      // Construct the previous history manually and inject it via system prompt, creating a new session.
-      let historyPrompt = "";
-      messages.forEach(m => {
-        if (m.role === 'user' || m.role === 'bot') {
-            historyPrompt += `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}\n\n`;
-        }
-      });
-      const systemPrompt = historyPrompt 
-        ? `You are a helpful assistant. Here is the previous conversation history:\n\n${historyPrompt}` 
-        : "You are a helpful assistant.";
+      let currentSessionId = sessionId;
 
-      const session = await tfClient.sessions.create({
-        agent: {
-          spec: {
-            model: { 
-              name: 'groq-for-trueforge-hackathon/gpt-oss-120b',
-              params: { maxTokens: 4096 }
-            },
-            systemPrompt: systemPrompt,
-            config: {
-              askUserQuestions: { enabled: false },
-              generativeUi: { enabled: false }
-            }
+      if (!currentSessionId) {
+        const session = await tfClient.sessions.create({
+          agent: {
+            name: 'notion-agent'
           }
-        }
-      });
-      
-      const currentSessionId = session.data.id;
-      setSessionId(currentSessionId);
-      hasCreatedSession.current = true;
+        });
+        currentSessionId = session.data.id;
+        setSessionId(currentSessionId);
+        hasCreatedSession.current = true;
+      }
 
       const stream = await tfClient.sessions.createTurnStream(currentSessionId, {
         input: [{ type: 'user.message', content: textPayload }]
@@ -126,7 +138,7 @@ export default function Chat() {
       ]);
 
       await processTrueForgeStream(stream, botMsgId);
-      
+
       setIsProcessing(false);
     } catch (error) {
       console.error('Failed to connect to backend:', error);
@@ -140,13 +152,13 @@ export default function Chat() {
 
   const handleApproval = async (decision) => {
     if (!pendingApproval) return;
-    
+
     const statusText = decision === 'APPROVED' ? 'Action Approved' : 'Action Rejected';
     setMessages((prev) => [
       ...prev,
       { id: generateId(), role: 'system', content: `*${statusText} by user*` }
     ]);
-    
+
     const currentApprovalId = pendingApproval.toolCallId;
     const currentThreadId = pendingApproval.threadId;
     setPendingApproval(null);
@@ -189,59 +201,85 @@ export default function Chat() {
   }, [initialPrompt]);
 
   return (
-    <div className="flex h-screen bg-zinc-50 dark:bg-[#09090b] dim:bg-zinc-950 text-zinc-900 dark:text-foreground dim:text-zinc-100 font-sans selection:bg-primary/20 overflow-hidden transition-colors duration-300">
-      
+    <div className="flex h-screen bg-white dark:bg-[#050505] text-zinc-900 dark:text-gray-200 font-sans dark:selection:bg-[#c084fc]/30 overflow-hidden transition-colors duration-500 delay-75">
+
       {/* Sidebar */}
-      <Sidebar 
-        isCollapsed={!isSidebarOpen} 
-        toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} 
+      <Sidebar
+        isCollapsed={!isSidebarOpen}
+        toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
       />
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col h-full relative overflow-hidden bg-zinc-50 dark:bg-[#09090b] dim:bg-zinc-950/80 transition-colors duration-300">
-        
-        {/* Glassy Orbs for Dim mode */}
-        <div className="absolute inset-0 pointer-events-none hidden dim:block overflow-hidden z-0">
-          <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-signature-gradient blur-[120px] opacity-40 animate-orb"></div>
-          <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] rounded-full bg-signature-gradient blur-[150px] opacity-30 animate-orb-reverse"></div>
-        </div>
+      <main className="flex-1 flex flex-col h-full relative overflow-hidden bg-zinc-50 dark:bg-[#09090b] transition-colors duration-500 delay-75">
+
+
 
         {/* Top Navbar */}
-        <header className="h-14 flex items-center px-4 border-b border-black/5 dark:border-white/5 dim:border-white/10 shrink-0 bg-zinc-50/80 dark:bg-[#09090b]/80 dim:bg-zinc-950/30 dim:backdrop-blur-xl backdrop-blur-md z-20 justify-between transition-colors duration-300">
-          <div className="flex items-center">
+        <header className="h-16 flex items-center px-5 border-b border-black/5 dark:border-[#26262b]/50 shrink-0 bg-white/80 dark:bg-[#09090b]/80 backdrop-blur-sm z-20 justify-between transition-colors duration-500 delay-0">
+          <div className="flex items-center gap-3">
             {!isSidebarOpen && (
-              <button 
+              <button
                 onClick={() => setIsSidebarOpen(true)}
-                className="mr-3 p-1.5 rounded-md text-gray-400 hover:text-gray-200 hover:bg-white/5 transition-colors"
+                className="p-1.5 rounded-md text-zinc-500 dark:text-gray-400 hover:text-zinc-800 dark:hover:text-gray-200 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
               >
                 <PanelLeft className="w-4 h-4" />
               </button>
             )}
-            <div className="flex flex-col">
-              <span className="font-medium text-sm text-zinc-800 dark:text-gray-200 dim:text-white">TrueForge Agent</span>
-              <span className="text-xs text-zinc-500 dark:text-gray-500 dim:text-gray-400">Connected</span>
-            </div>
+            <h2 className="font-semibold text-zinc-800 dark:text-gray-200 text-[15px]">TrueForge Agent</h2>
+            <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/20 border border-green-200 dark:border-green-500/20 text-[11px] text-green-700 dark:text-green-400 font-medium">
+              <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span> Active
+            </span>
           </div>
-          <div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={toggleMockApproval}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-full hover:bg-amber-500/20 transition-colors"
+            >
+              <TestTube className="w-3.5 h-3.5" />
+              Mock UI
+            </button>
+
             <ThemeSwitcher />
           </div>
         </header>
 
         {/* Messages Feed */}
-        <ChatContainerRoot className="flex-1 overflow-y-auto px-4 md:px-8 pt-8 pb-32 space-y-12 scroll-smooth custom-scrollbar">
+        <ChatContainerRoot className="flex-1 overflow-y-auto px-4 md:px-8 pt-8 pb-32 space-y-12 scroll-smooth custom-scrollbar relative z-10">
           <ChatContainerContent>
             {messages.length === 0 && (
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, ease: "easeOut" }}
-                className="h-full flex flex-col items-center justify-center text-muted-foreground mt-24"
+                className="flex-1 flex flex-col items-center justify-center max-w-2xl mx-auto w-full text-center space-y-8 mt-12"
               >
-                <div className="w-16 h-16 rounded-2xl bg-zinc-100 dark:bg-secondary dim:bg-white/5 dim:glass-panel border border-black/10 dark:border-border flex items-center justify-center mb-6 shadow-sm">
-                  <Sparkles className="w-7 h-7 text-amber-500 dark:text-primary dim:text-purple-400" />
+                {/* Welcome Greeting */}
+                <div className="space-y-3">
+                  <div className="w-16 h-16 bg-white dark:bg-[#1a1a1f] dim:bg-white/5 rounded-2xl mx-auto flex items-center justify-center text-3xl mb-4 border border-zinc-200 dark:border-gray-800 dim:border-white/10 shadow-lg dark:ring-1 dark:ring-white/5">
+                    🤖
+                  </div>
+                  <h2 className="text-2xl font-semibold text-zinc-800 dark:text-gray-200 dim:text-white">How can I help you today?</h2>
+                  <p className="text-zinc-500 dark:text-gray-500 dim:text-gray-300 text-sm">I can execute code, analyze databases, or draft documents.</p>
                 </div>
-                <h2 className="text-lg md:text-xl font-medium text-zinc-800 dark:text-foreground dim:text-white mb-2">How can I help you today?</h2>
-                <p className="text-xs md:text-sm text-zinc-500 dark:text-muted-foreground dim:text-gray-300">Enter a prompt to initialize the TrueForge agent.</p>
+
+                {/* Quick Action Capability Cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full px-4">
+                  {[
+                    { title: "Analyze repository", desc: "Scan for unused dependencies", prompt: "Please analyze the repository and scan for unused dependencies." },
+                    { title: "Debug error log", desc: "Find the root cause of a crash", prompt: "I have a crash log, can you help me find the root cause?" },
+                    { title: "Generate API", desc: "Draft a basic Express.js server", prompt: "Please generate a basic Express.js server API." },
+                    { title: "Run diagnostics", desc: "Check current system health", prompt: "Run system diagnostics to check current health." }
+                  ].map((action, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => submitMessage(action.prompt)}
+                      className="flex flex-col text-left p-4 rounded-xl border border-zinc-200 dark:border-gray-800 dim:border-white/10 bg-white dark:bg-[#1a1a1f] dim:bg-white/5 hover:bg-zinc-50 dark:hover:bg-gray-800/80 transition-colors duration-500 delay-150 group shadow-sm"
+                    >
+                      <span className="text-sm font-medium text-zinc-700 dark:text-gray-200 dim:text-white mb-1 group-hover:text-purple-500 dark:group-hover:text-purple-400 transition-colors duration-500 delay-150">{action.title}</span>
+                      <span className="text-xs text-zinc-500 dark:text-gray-500 dim:text-gray-400">{action.desc}</span>
+                    </button>
+                  ))}
+                </div>
               </motion.div>
             )}
 
@@ -275,38 +313,74 @@ export default function Chat() {
                 </motion.div>
               ))}
 
-              {/* Approval Modal rendering inside the chat feed */}
-              {pendingApproval && (
+              {/* Transparency Stepper (Phase 3) */}
+              {executingAction && (
                 <motion.div
                   initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="w-full max-w-4xl mx-auto flex flex-col mb-8"
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="flex gap-4 w-full max-w-4xl mx-auto mt-4 mb-6"
                 >
-                  <div className="w-full max-w-2xl bg-black/40 border border-amber-500/20 rounded-xl overflow-hidden shadow-lg backdrop-blur-md relative ml-[52px]">
-                    <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-amber-500/50 to-transparent opacity-50" />
-                    <div className="p-5 flex items-start gap-4">
-                      <div className="w-8 h-8 rounded-full bg-amber-500/10 flex items-center justify-center flex-shrink-0 border border-amber-500/20">
-                        <ShieldAlert className="w-4 h-4 text-amber-400" />
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="font-medium text-amber-500 text-sm mb-1 tracking-wide">{pendingApproval.actionTitle}</h3>
-                        <p className="text-xs text-amber-200/70 leading-relaxed max-w-lg">{pendingApproval.details}</p>
+                  <div className="w-8 h-8 rounded-full bg-purple-900/30 border border-purple-500/30 flex items-center justify-center text-purple-400 text-xs shrink-0 font-bold shadow-sm">TF</div>
+
+                  <div className="flex-1 space-y-3 pt-1">
+                    <div className="rounded-xl border border-zinc-200 dark:border-gray-800 bg-white dark:bg-[#121214] overflow-hidden text-sm shadow-md">
+                      <button className="w-full flex items-center justify-between p-3 text-zinc-500 dark:text-gray-400 hover:bg-zinc-50 dark:hover:bg-gray-800/30 transition">
+                        <div className="flex items-center gap-3">
+                          <span className="animate-spin text-purple-500">↻</span>
+                          <span className="font-medium text-zinc-900 dark:text-gray-200">{executingAction.actionName}</span>
+                        </div>
+                        <span className="text-xs text-zinc-400 dark:text-gray-500">▼</span>
+                      </button>
+
+                      <div className="px-4 pb-4 pt-2 border-t border-zinc-100 dark:border-gray-800/50 space-y-2 font-mono text-[13px]">
+                        {executingAction.steps?.map((step, idx) => (
+                          <div key={idx} className={`flex items-center gap-3 ${step.status === 'loading' ? 'text-purple-600 dark:text-purple-400 bg-purple-100 dark:bg-purple-900/10 p-1 -ml-1 rounded' : 'text-zinc-500 dark:text-gray-400'}`}>
+                            {step.status === 'loading' ? <span className="animate-pulse">▶</span> : <span className="text-green-500">✔</span>}
+                            {step.text}
+                          </div>
+                        ))}
                       </div>
                     </div>
+                  </div>
+                </motion.div>
+              )}
 
-                    <div className="px-5 py-3 bg-white/[0.02] flex justify-end gap-2 border-t border-white/5">
-                      <button
-                        onClick={() => handleApproval('REJECTED')}
-                        className="px-4 py-2 text-xs font-medium text-zinc-400 hover:text-zinc-200 hover:bg-white/10 rounded-lg transition-colors focus:outline-none"
-                      >
-                        Reject
-                      </button>
-                      <button
-                        onClick={() => handleApproval('APPROVED')}
-                        className="px-4 py-2 text-xs font-medium text-amber-950 bg-amber-500 hover:bg-amber-400 rounded-lg transition-colors focus:outline-none shadow-[0_0_15px_rgba(245,158,11,0.2)]"
-                      >
-                        Approve Action
-                      </button>
+              {/* Approval Modal rendering inside the chat feed */}
+              {pendingApproval && (
+                <motion.div
+                  initial={{ opacity: 0, y: 15, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -10, scale: 0.98 }}
+                  className="flex gap-4 w-full max-w-4xl mx-auto mt-4 mb-8"
+                >
+                  <div className="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/30 border border-red-200 dark:border-red-500/30 flex items-center justify-center text-red-600 dark:text-red-400 text-xs shrink-0 font-bold shadow-sm">⚠️</div>
+
+                  <div className="flex-1 space-y-3 pt-1">
+                    <div className="rounded-xl border border-red-200 dark:border-red-900/50 bg-white dark:bg-[#1a1212] overflow-hidden text-sm shadow-xl p-4 md:p-5">
+                      <h3 className="text-red-600 dark:text-red-400 font-semibold mb-2">{pendingApproval.actionTitle || "Irreversible Action Pending"}</h3>
+                      <p className="text-zinc-600 dark:text-gray-300 mb-4">{pendingApproval.details}</p>
+
+                      {pendingApproval.code && (
+                        <code className="block bg-zinc-100 dark:bg-black/50 p-3 rounded-lg border border-zinc-200 dark:border-gray-800 font-mono text-zinc-600 dark:text-gray-400 mb-5 overflow-x-auto">
+                          {pendingApproval.code}
+                        </code>
+                      )}
+
+                      <div className="flex flex-wrap gap-3">
+                        <button
+                          onClick={() => pendingApproval.isMock ? toggleMockApproval() : handleApproval('APPROVED')}
+                          className="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition shadow-md shadow-red-600/20"
+                        >
+                          Approve & Execute
+                        </button>
+                        <button
+                          onClick={() => pendingApproval.isMock ? toggleMockApproval() : handleApproval('REJECTED')}
+                          className="px-5 py-2.5 bg-zinc-100 dark:bg-gray-800 hover:bg-zinc-200 dark:hover:bg-gray-700 text-zinc-700 dark:text-gray-200 rounded-lg font-medium transition border border-zinc-200 dark:border-transparent"
+                        >
+                          Cancel
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </motion.div>
@@ -317,20 +391,25 @@ export default function Chat() {
         </ChatContainerRoot>
 
         {/* Floating Minimal Input Bar */}
-        <div className="absolute bottom-6 left-0 right-0 px-4 flex justify-center z-10 bg-gradient-to-t from-zinc-50 dark:from-[#09090b] dim:from-zinc-950 via-zinc-50/95 dark:via-[#09090b]/95 dim:via-zinc-950/90 to-transparent pt-12 pointer-events-none transition-colors duration-300">
+        <div className="absolute bottom-6 left-0 right-0 px-4 flex justify-center z-10 pt-12 pointer-events-none transition-colors duration-500 delay-[225ms]">
           <motion.div
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.2, duration: 0.5, ease: "easeOut" }}
             className="w-full max-w-2xl relative pointer-events-auto"
           >
-            <div className="w-full relative shadow-2xl rounded-2xl bg-white dark:bg-black/60 dim:bg-white/5 dim:glass-panel dim:backdrop-blur-2xl border border-black/10 dark:border-white/10 dim:border-white/20 transition-colors duration-300">
+            <div className={`w-full relative rounded-2xl bg-white dark:bg-[#111114] border border-black/10 dark:border-[#26262b] transition-all duration-500 delay-[225ms] shadow-2xl dark:shadow-black/50 ${pendingApproval
+                ? 'shadow-[0_0_20px_rgba(245,158,11,0.25)] dark:shadow-[0_0_25px_rgba(245,158,11,0.3)] dark:ring-1 dark:ring-amber-500/50'
+                : executingAction
+                  ? 'shadow-[0_0_20px_rgba(168,85,247,0.2)] dark:shadow-[0_0_25px_rgba(168,85,247,0.25)] dark:ring-1 dark:ring-purple-500/50'
+                  : 'focus-within:shadow-[0_0_20px_rgba(168,85,247,0.15)] dark:focus-within:border-[#3b2354] dark:focus-within:ring-1 dark:focus-within:ring-[#3b2354]'
+              }`}>
               <BorderBeam size="md" colorVariant="colorful">
                 <div className="w-full">
-                  <PromptInputBox 
+                  <PromptInputBox
                     onSend={submitMessage}
-                    isLoading={isProcessing || pendingApproval}
-                    placeholder={isProcessing ? "Agent is processing..." : pendingApproval ? "Awaiting your approval..." : "Ask the agent anything..."}
+                    isLoading={isProcessing || pendingApproval || executingAction}
+                    placeholder={executingAction ? "Agent is processing..." : pendingApproval ? "Awaiting your approval..." : "Ask the agent anything..."}
                   />
                 </div>
               </BorderBeam>

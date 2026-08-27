@@ -54,28 +54,41 @@ export function ThemeSwitcher({
   }, [activeValue]);
 
   const handleChange = (newValue: Theme) => {
-    if (onValueChange) {
-      onValueChange(newValue);
+    const applyTheme = () => {
+      // Synchronously update the DOM for the view transition
+      const root = window.document.documentElement;
+      root.classList.remove("light", "dark");
+      root.classList.add(newValue);
+
+      // Update React state
+      if (onValueChange) {
+        onValueChange(newValue);
+      } else {
+        setInternalValue(newValue);
+      }
+    };
+
+    if (document.startViewTransition) {
+      document.startViewTransition(applyTheme);
     } else {
-      setInternalValue(newValue);
+      applyTheme();
     }
   };
 
   return (
-    <div className="relative flex items-center p-1 bg-black/5 dark:bg-white/10 backdrop-blur-md rounded-full border border-black/5 dark:border-white/10 shadow-inner">
+    <div className="relative flex items-center p-1 bg-black/5 dark:bg-black/40 backdrop-blur-md rounded-full border border-black/5 dark:border-white/5 shadow-inner">
       {themeOptions.map((option) => (
         <button
           key={option.value}
           onClick={() => handleChange(option.value)}
-          className={`relative z-10 flex items-center justify-center w-10 h-8 rounded-full transition-colors duration-300 ${
-            activeValue === option.value ? "text-black dark:text-white" : "text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white"
-          }`}
+          className={`relative z-10 flex items-center justify-center w-10 h-8 rounded-full transition-colors duration-300 ${activeValue === option.value ? "text-zinc-900 dark:text-white" : "text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300"
+            }`}
           aria-label={`Switch to ${option.value} theme`}
         >
           {activeValue === option.value && (
             <motion.div
               layoutId="theme-bubble"
-              className="absolute inset-0 bg-white dark:bg-zinc-800 rounded-full shadow-[0_2px_10px_rgba(0,0,0,0.05)] dark:shadow-[0_2px_10px_rgba(0,0,0,0.2)] border border-black/5 dark:border-white/10"
+              className="absolute inset-0 bg-white dark:bg-white/10 rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.08)] dark:shadow-[0_2px_12px_rgba(0,0,0,0.3)] border border-black/5 dark:border-white/10"
               transition={{ type: "spring", bounce: 0.2, duration: 0.5 }}
             />
           )}
