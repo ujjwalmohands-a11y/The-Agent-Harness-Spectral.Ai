@@ -10,18 +10,66 @@ import {
   Mail,
   Send,
   X,
-  TestTube
+  TestTube,
+  Copy,
+  Check
 } from 'lucide-react';
 import { ChatContainerRoot, ChatContainerContent, ChatContainerScrollAnchor } from "@/components/ui/chat-container";
-import { Message, MessageAvatar, MessageContent } from "@/components/ui/message";
+import { Message, MessageAvatar, MessageContent, MessageActions, MessageAction } from "@/components/ui/message";
 import { PromptInputBox } from "@/components/ui/ai-prompt-box";
 import { BorderBeam } from "@/components/ui/border-beam";
 import { Sidebar } from "@/components/ui/sidebar";
 import { ThemeSwitcher } from "@/components/ui/apple-liquid-glass-switcher";
+import { ToolExecutionLog } from "@/components/ui/tool-execution-log";
 import { cn } from "@/lib/utils";
 import { TrueForge } from '@truefoundry/trueforge-sdk';
+import ColorBends from './Hero/ColorBends';
+import DotField from './Hero/DotField';
 
 const tfClient = new TrueForge({ baseUrl: import.meta.env.VITE_TRUEFORGE_URL || '/' });
+
+// Trueforge Background Configuration
+const config = {
+  color: "#06B6D4",
+  colors: ["#06b6d4", "#3b82f6", "#2dd4bf"],
+  speed: 0.1,
+  frequency: 1.1,
+  noise: 0.02,
+  bandWidth: 0.40,
+  rotation: 45,
+  intensity: 1.1,
+  dotRadius: 1.5,
+  dotSpacing: 14,
+  bulgeStrength: 67,
+  dotOpacity: 0.4,
+};
+
+const hexToRgba = (hex, alpha) => {
+  if (!/^#[0-9A-Fa-f]{6}$/.test(hex)) return `rgba(255, 255, 255, ${alpha})`;
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
+
+const dotGlow = hexToRgba(config.color, config.dotOpacity);
+const dotGlowCore = hexToRgba(config.color, config.dotOpacity * 0.5);
+
+const CopyButton = ({ text }) => {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = () => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+  return (
+    <MessageAction tooltip={copied ? "Copied!" : "Copy"}>
+      <button onClick={handleCopy} className="p-1 rounded-md text-zinc-400 hover:text-zinc-700 dark:text-gray-500 dark:hover:text-gray-300 hover:bg-zinc-100 dark:hover:bg-[#26262b] transition-colors">
+        {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+      </button>
+    </MessageAction>
+  );
+};
 
 const generateId = () => {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
@@ -30,15 +78,52 @@ const generateId = () => {
   return Date.now().toString(36) + Math.random().toString(36).substr(2);
 };
 
+const BlinkingLogo = () => {
+  const [isOpen, setIsOpen] = useState(true);
+
+  useEffect(() => {
+    let timeoutId;
+    const blink = () => {
+      if (isOpen) {
+        timeoutId = setTimeout(() => setIsOpen(false), 2000 + Math.random() * 3000);
+      } else {
+        timeoutId = setTimeout(() => setIsOpen(true), 150);
+      }
+    };
+    blink();
+    return () => clearTimeout(timeoutId);
+  }, [isOpen]);
+
+  return (
+    <div className="w-20 h-20 relative flex-shrink-0 dark:bg-white rounded-full p-2 shadow-sm transition-all">
+      <img
+        src="/Oliver/Oliver.svg"
+        alt="Oliver Eyes Open"
+        className={`absolute inset-0 w-full h-full object-contain ${isOpen ? 'opacity-100' : 'opacity-0'}`}
+      />
+      <img
+        src="/Oliver/Oliver_closed.svg"
+        alt="Oliver Eyes Closed"
+        className={`absolute inset-0 w-full h-full object-contain ${!isOpen ? 'opacity-100' : 'opacity-0'}`}
+      />
+    </div>
+  );
+};
+
 export default function Chat() {
   // State for TrueForge backend integration
   const [messages, setMessages] = useState([]);
+  const [sessions, setSessions] = useState([]);
   const [sessionId, setSessionId] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [pendingApproval, setPendingApproval] = useState(null);
   const [executingAction, setExecutingAction] = useState(null);
   const hasCreatedSession = useRef(false);
   const mockTimerRef = useRef(null);
+
+  // Tool execution tracking
+  const [toolSteps, setToolSteps] = useState([]);
+  const [isToolsActive, setIsToolsActive] = useState(false);
 
   // UI State
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -73,33 +158,100 @@ export default function Chat() {
     if (pendingApproval && !pendingApproval.isMock) return;
 
     // Always allow cancelling mock state, even while processing
-    if (pendingApproval?.isMock || executingAction || mockTimerRef.current) {
+    if (pendingApproval?.isMock || toolSteps.length > 0 || mockTimerRef.current) {
       clearMockState();
+      setToolSteps([]);
+      setIsToolsActive(false);
     } else if (!isProcessing) {
       // Only start new mock when nothing real is running
-      setExecutingAction({
-        actionName: 'Executing diagnostics...',
-        steps: [
-          { text: 'Read `package.json`', status: 'done' },
-          { text: 'Analyzing dependency tree...', status: 'loading' }
-        ]
-      });
+      setIsToolsActive(true);
+      setToolSteps([
+        { stepId: 'mock-1', toolName: 'notion', status: 'completed', message: 'Connected to Notion workspace' },
+        { stepId: 'mock-2', toolName: 'notion', status: 'running', message: 'Searching database...' },
+      ]);
       mockTimerRef.current = setTimeout(() => {
-        mockTimerRef.current = null;
-        setExecutingAction(null);
-        setPendingApproval({
-          isMock: true,
-          actionTitle: 'Irreversible Action Pending',
-          details: 'I am about to execute the following database drop:',
-          code: 'DROP TABLE production_users;',
-          emailPreview: null
-        });
-      }, 2500);
+        setToolSteps(prev => prev.map(s => s.stepId === 'mock-2' ? { ...s, status: 'completed', message: 'Found 3 pages' } : s));
+        setToolSteps(prev => [...prev, { stepId: 'mock-3', toolName: 'gmail', status: 'running', message: 'Drafting email...' }]);
+
+        mockTimerRef.current = setTimeout(() => {
+          setToolSteps(prev => prev.map(s => s.stepId === 'mock-3' ? { ...s, status: 'completed', message: 'Draft ready' } : s));
+          setIsToolsActive(false);
+
+          mockTimerRef.current = setTimeout(() => {
+            mockTimerRef.current = null;
+            setPendingApproval({
+              isMock: true,
+              actionTitle: 'Irreversible Action Pending',
+              details: 'I am about to execute the following database drop:',
+              code: 'DROP TABLE production_users;',
+              emailPreview: null
+            });
+          }, 1000);
+        }, 1500);
+      }, 1500);
     }
   };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const fetchSessions = async () => {
+    try {
+      const res = await tfClient.sessions.list();
+      setSessions(res.data || []);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  useEffect(() => {
+    fetchSessions();
+  }, []);
+
+  const handleNewSession = () => {
+    setSessionId(null);
+    setMessages([]);
+    hasCreatedSession.current = false;
+  };
+
+  const handleDeleteSession = async (e, id) => {
+    e.stopPropagation();
+    try {
+      await tfClient.sessions.delete(id);
+      if (sessionId === id) handleNewSession();
+      fetchSessions();
+    } catch (err) {
+      console.error('Failed to delete session', err);
+    }
+  };
+
+  const handleSelectSession = async (id) => {
+    setSessionId(id);
+    hasCreatedSession.current = true;
+    setMessages([]);
+    setIsProcessing(true);
+    try {
+      const res = await tfClient.sessions.listEvents(id);
+      const events = res.data || [];
+      const newMsgs = [];
+      events.slice().reverse().forEach(ev => {
+        if (ev.event.type === 'turn.created') {
+          const userMsg = ev.event.input?.find(i => i.type === 'user.message');
+          if (userMsg) {
+            newMsgs.push({ id: ev.event.id + '-user', role: 'user', content: userMsg.content });
+          }
+        } else if (ev.event.type === 'model.message' && ev.event.content) {
+          newMsgs.push({ id: ev.event.id + '-bot', role: 'bot', content: ev.event.content });
+        }
+      });
+      setMessages(newMsgs);
+    } catch (e) {
+      console.error(e);
+      setMessages([{ id: generateId(), role: 'bot', content: 'Failed to load session history.' }]);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   useEffect(() => {
@@ -108,6 +260,7 @@ export default function Chat() {
 
   const processTrueForgeStream = async (stream, botMsgId) => {
     let currentText = "";
+    setIsToolsActive(true);
     for await (const event of stream) {
       if (event.type === 'tool.approval_required') {
         const toolCall = event.toolCalls[0];
@@ -118,6 +271,27 @@ export default function Chat() {
           details: 'The AI is requesting permission to execute an action.'
         });
         break;
+      } else if (event.type === 'tool.call') {
+        // A tool call is starting
+        const stepId = event.toolCallId || event.id || generateId();
+        const toolName = event.toolName || event.name || 'tool';
+        const msg = event.message || `Calling ${toolName}...`;
+        setToolSteps(prev => {
+          const existing = prev.find(s => s.stepId === stepId);
+          if (existing) {
+            return prev.map(s => s.stepId === stepId ? { ...s, status: 'running', message: msg } : s);
+          }
+          return [...prev, { stepId, toolName, status: 'running', message: msg }];
+        });
+      } else if (event.type === 'tool.result') {
+        // A tool call completed
+        const stepId = event.toolCallId || event.id;
+        const isError = event.error || event.status === 'failed';
+        setToolSteps(prev => prev.map(s =>
+          s.stepId === stepId
+            ? { ...s, status: isError ? 'failed' : 'completed', message: isError ? (event.error || 'Failed') : (event.message || s.message || 'Done'), errorDetail: isError ? event.error : undefined }
+            : s
+        ));
       } else if (event.type === 'model.message.delta' && event.content) {
         currentText += event.content;
         setMessages(prev => prev.map(msg => msg.id === botMsgId ? { ...msg, content: currentText } : msg));
@@ -126,6 +300,7 @@ export default function Chat() {
         setMessages(prev => prev.map(msg => msg.id === botMsgId ? { ...msg, content: currentText } : msg));
       }
     }
+    setIsToolsActive(false);
   };
 
   const submitMessage = async (textPayload) => {
@@ -133,6 +308,9 @@ export default function Chat() {
 
     // Clear any active mock state before starting real backend work
     clearMockState();
+
+    // Clear previous tool execution steps for the new turn
+    setToolSteps([]);
 
     const userMsgId = generateId();
     setMessages((prev) => [
@@ -148,7 +326,7 @@ export default function Chat() {
       if (!currentSessionId) {
         const session = await tfClient.sessions.create({
           agent: {
-            name: 'notion-agent'
+            name: 'oliver'
           }
         });
         currentSessionId = session.data.id;
@@ -169,6 +347,7 @@ export default function Chat() {
       await processTrueForgeStream(stream, botMsgId);
 
       setIsProcessing(false);
+      fetchSessions();
     } catch (error) {
       console.error('Failed to connect to backend:', error);
       setMessages((prev) => [
@@ -229,6 +408,19 @@ export default function Chat() {
     }
   }, [initialPrompt]);
 
+  // Use a stable, random 2-3 word greeting
+  const randomGreeting = React.useMemo(() => {
+    const greetings = [
+      "Ah,You've returned.",
+      "Let's forge.",
+      "Ideas await.",
+      "Ready to start?",
+      "Start crafting.",
+      "Speak your mind."
+    ];
+    return greetings[Math.floor(Math.random() * greetings.length)];
+  }, []);
+
   return (
     <div className="flex h-screen bg-white dark:bg-[#050505] text-zinc-900 dark:text-gray-200 font-sans dark:selection:bg-[#c084fc]/30 overflow-hidden transition-colors duration-500 delay-75">
 
@@ -236,10 +428,65 @@ export default function Chat() {
       <Sidebar
         isCollapsed={!isSidebarOpen}
         toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+        sessions={sessions}
+        onNewSession={handleNewSession}
+        onSelectSession={handleSelectSession}
+        onDeleteSession={handleDeleteSession}
+        currentSessionId={sessionId}
       />
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col h-full relative overflow-hidden bg-zinc-50 dark:bg-[#09090b] transition-colors duration-500 delay-75">
+      <main className="flex-1 flex flex-col h-full relative overflow-hidden bg-zinc-50 dark:bg-transparent transition-colors duration-500 delay-75">
+
+        {/* Trueforge Background (Dark Mode Only) */}
+        <div className="absolute inset-0 z-0 hidden dark:block transition-opacity duration-1000"
+             style={{
+               background: 'radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--theme-color) 20%, #111118) 0%, #050508 100%)',
+               '--theme-color': config.color,
+               '--theme-c1': config.colors[0],
+               '--theme-c2': config.colors[1] || config.colors[0],
+               '--theme-glow': hexToRgba(config.color, 0.4),
+               '--theme-glow-strong': hexToRgba(config.color, 0.8),
+             }}>
+          
+          <div className="absolute -inset-[5%] z-0 opacity-80 saturate-150 pointer-events-none">
+            <ColorBends
+              colors={config.colors}
+              rotation={config.rotation}
+              speed={config.speed}
+              scale={1.2}
+              frequency={config.frequency}
+              intensity={config.intensity}
+              noise={config.noise}
+              warpStrength={1}
+              bandWidth={config.bandWidth * 15}
+              transparent={true}
+            />
+          </div>
+
+          <div className="absolute inset-0 z-0 opacity-100 pointer-events-none">
+            <DotField
+              dotRadius={config.dotRadius || 1.8}
+              dotSpacing={config.dotSpacing || 16}
+              cursorRadius={400}
+              cursorForce={0.15}
+              bulgeOnly={true}
+              bulgeStrength={config.bulgeStrength || 80}
+              glowRadius={0}
+              sparkle={true}
+              gradientFrom={dotGlow}
+              gradientTo={dotGlow}
+              glowColor={dotGlowCore}
+            />
+          </div>
+
+          <div
+            className="absolute -inset-[10%] z-0 pointer-events-none mix-blend-overlay opacity-25 animate-noise"
+            style={{
+              backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
+            }}
+          />
+        </div>
 
 
 
@@ -288,104 +535,138 @@ export default function Chat() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, ease: "easeOut" }}
-                className="flex-1 flex flex-col items-center justify-center max-w-2xl mx-auto w-full text-center space-y-8 mt-12"
+                className="flex flex-col items-center justify-center max-w-2xl mx-auto w-full text-center my-auto min-h-[40vh]"
               >
-                {/* Welcome Greeting */}
-                <div className="space-y-3">
-                  <div className="w-16 h-16 bg-white dark:bg-[#1a1a1f] dim:bg-white/5 rounded-2xl mx-auto flex items-center justify-center text-3xl mb-4 border border-zinc-200 dark:border-gray-800 dim:border-white/10 shadow-lg dark:ring-1 dark:ring-white/5">
-                    🤖
-                  </div>
-                  <h2 className="text-2xl font-semibold text-zinc-800 dark:text-gray-200 dim:text-white">How can I help you today?</h2>
-                  <p className="text-zinc-500 dark:text-gray-500 dim:text-gray-300 text-sm">I can execute code, analyze databases, or draft documents.</p>
-                </div>
-
-                {/* Quick Action Capability Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full px-4">
-                  {[
-                    { title: "Analyze repository", desc: "Scan for unused dependencies", prompt: "Please analyze the repository and scan for unused dependencies." },
-                    { title: "Debug error log", desc: "Find the root cause of a crash", prompt: "I have a crash log, can you help me find the root cause?" },
-                    { title: "Generate API", desc: "Draft a basic Express.js server", prompt: "Please generate a basic Express.js server API." },
-                    { title: "Run diagnostics", desc: "Check current system health", prompt: "Run system diagnostics to check current health." }
-                  ].map((action, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => submitMessage(action.prompt)}
-                      disabled={isProcessing || !!pendingApproval}
-                      className={cn(
-                        "flex flex-col text-left p-4 rounded-xl border transition-colors duration-500 delay-150 group shadow-sm",
-                        isProcessing || pendingApproval
-                          ? "border-zinc-200 dark:border-gray-800 dim:border-white/10 bg-zinc-50 dark:bg-[#1a1a1f]/50 dim:bg-white/3 opacity-50 cursor-not-allowed"
-                          : "border-zinc-200 dark:border-gray-800 dim:border-white/10 bg-white dark:bg-[#1a1a1f] dim:bg-white/5 hover:bg-zinc-50 dark:hover:bg-gray-800/80"
-                      )}
-                    >
-                      <span className="text-sm font-medium text-zinc-700 dark:text-gray-200 dim:text-white mb-1 group-hover:text-purple-500 dark:group-hover:text-purple-400 transition-colors duration-500 delay-150">{action.title}</span>
-                      <span className="text-xs text-zinc-500 dark:text-gray-500 dim:text-gray-400">{action.desc}</span>
-                    </button>
-                  ))}
+                {/* Minimal Claude-like Greeting */}
+                <div className="flex items-center justify-center gap-4">
+                  <BlinkingLogo />
+                  <h2
+                    className="text-[2rem] font-light text-zinc-900 dark:text-gray-100 dim:text-white tracking-tight"
+                    style={{ fontFamily: 'ui-serif, Georgia, Cambria, "Times New Roman", Times, serif' }}
+                  >
+                    {randomGreeting}
+                  </h2>
                 </div>
               </motion.div>
             )}
 
             <AnimatePresence initial={false}>
-              {messages.map((msg) => (
-                <motion.div
-                  key={msg.id}
-                  initial={{ opacity: 0, y: 15 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
-                  className="w-full max-w-4xl mx-auto flex flex-col"
-                >
-                  {msg.role === 'user' ? (
-                    <Message className="justify-end mb-6 w-full mt-4">
-                      <MessageContent role="user">
-                        {msg.content}
-                      </MessageContent>
-                    </Message>
-                  ) : (
-                    <Message className="mb-6 w-full max-w-3xl">
-                      <MessageAvatar
-                        src="/deepseek_logo.png"
-                        fallback={<Sparkles className="w-4 h-4 text-primary" />}
-                        className="bg-secondary"
-                      />
-                      <MessageContent role="system" className="mt-1">
-                        {msg.content}
-                      </MessageContent>
-                    </Message>
-                  )}
-                </motion.div>
-              ))}
+              {/* Group messages: consecutive bot messages become a single group */}
+              {(() => {
+                const groups = [];
+                let i = 0;
+                while (i < messages.length) {
+                  const msg = messages[i];
+                  if (msg.role === 'user') {
+                    groups.push({ type: 'user', msgs: [msg], id: msg.id });
+                    i++;
+                  } else {
+                    // collect all consecutive bot messages
+                    const botMsgs = [];
+                    while (i < messages.length && messages[i].role !== 'user') {
+                      botMsgs.push(messages[i]);
+                      i++;
+                    }
+                    groups.push({ type: 'bot', msgs: botMsgs, id: botMsgs[0].id });
+                  }
+                }
 
-              {/* Transparency Stepper (Phase 3) */}
-              {executingAction && (
+                return groups.map((group) => {
+                  if (group.type === 'user') {
+                    const msg = group.msgs[0];
+                    return (
+                      <motion.div
+                        key={group.id}
+                        initial={{ opacity: 0, y: 15 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
+                        className="w-full max-w-4xl mx-auto"
+                      >
+                        <Message className="justify-end mb-6 w-full mt-4">
+                          <MessageContent role="user">
+                            {msg.content}
+                          </MessageContent>
+                        </Message>
+                      </motion.div>
+                    );
+                  }
+
+                  // Bot group
+                  const isMultiple = group.msgs.length > 1;
+                  return (
+                    <motion.div
+                      key={group.id}
+                      initial={{ opacity: 0, y: 15 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
+                      className="w-full max-w-4xl mx-auto mb-6 mt-2"
+                    >
+                      <div className="flex gap-3 w-full max-w-3xl">
+                        {/* Left column: avatar + continuous threading line */}
+                        <div className="relative flex-shrink-0 w-12 flex flex-col items-center">
+                          {/* Avatar */}
+                          <div className="h-12 w-12 rounded-full overflow-hidden border border-purple-200 dark:border-purple-500/30 bg-white dark:bg-white drop-shadow-sm ring-2 ring-purple-100 dark:ring-purple-900/30 flex-shrink-0 z-10">
+                            <img
+                              src="/Oliver.png"
+                              alt="Oliver"
+                              className="w-full h-full object-cover scale-125"
+                            />
+                          </div>
+                          {/* Dashed threading line — fades out gracefully at the bottom */}
+                          {isMultiple && (
+                            <div
+                              className="flex-1 mt-2"
+                              style={{
+                                width: '2px',
+                                borderLeft: '2px dashed rgb(168 85 247)',
+                                opacity: 0.6,
+                                maskImage: 'linear-gradient(to bottom, black 70%, transparent 100%)',
+                                WebkitMaskImage: 'linear-gradient(to bottom, black 70%, transparent 100%)',
+                              }}
+                            />
+                          )}
+                        </div>
+
+                        {/* Right column: name label + all messages */}
+                        <div className="flex-1 flex flex-col gap-0 min-w-0">
+                          {/* Character name — Claude-style serif */}
+                          <span
+                            className="text-[13px] font-medium text-zinc-500 dark:text-zinc-400 mb-2 ml-1"
+                            style={{ fontFamily: 'ui-serif, Georgia, Cambria, "Times New Roman", Times, serif', letterSpacing: '0.01em' }}
+                          >
+                            Oliver
+                          </span>
+
+                          {/* All messages in this group */}
+                          {group.msgs.map((msg, msgIdx) => (
+                            <div key={msg.id} className={cn("group", msgIdx < group.msgs.length - 1 ? "mb-4" : "")}>
+                              <MessageContent role="system" className="mt-0">
+                                {msg.content}
+                              </MessageContent>
+                              <MessageActions className="opacity-0 group-hover:opacity-100 transition-opacity mt-1">
+                                <CopyButton text={msg.content} />
+                              </MessageActions>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                });
+              })()}
+
+              {/* Tool Execution Log — inline in the chat feed */}
+              {toolSteps.length > 0 && (
                 <motion.div
                   initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95 }}
-                  className="flex gap-4 w-full max-w-4xl mx-auto mt-4 mb-6"
+                  className="w-full max-w-4xl mx-auto mt-2 mb-4 pl-[60px]"
                 >
-                  <div className="w-8 h-8 rounded-full bg-purple-900/30 border border-purple-500/30 flex items-center justify-center text-purple-400 text-xs shrink-0 font-bold shadow-sm">TF</div>
-
-                  <div className="flex-1 space-y-3 pt-1">
-                    <div className="rounded-xl border border-zinc-200 dark:border-gray-800 bg-white dark:bg-[#121214] overflow-hidden text-sm shadow-md">
-                      <button className="w-full flex items-center justify-between p-3 text-zinc-500 dark:text-gray-400 hover:bg-zinc-50 dark:hover:bg-gray-800/30 transition">
-                        <div className="flex items-center gap-3">
-                          <span className="animate-spin text-purple-500">↻</span>
-                          <span className="font-medium text-zinc-900 dark:text-gray-200">{executingAction.actionName}</span>
-                        </div>
-                        <span className="text-xs text-zinc-400 dark:text-gray-500">▼</span>
-                      </button>
-
-                      <div className="px-4 pb-4 pt-2 border-t border-zinc-100 dark:border-gray-800/50 space-y-2 font-mono text-[13px]">
-                        {executingAction.steps?.map((step, idx) => (
-                          <div key={idx} className={`flex items-center gap-3 ${step.status === 'loading' ? 'text-purple-600 dark:text-purple-400 bg-purple-100 dark:bg-purple-900/10 p-1 -ml-1 rounded' : 'text-zinc-500 dark:text-gray-400'}`}>
-                            {step.status === 'loading' ? <span className="animate-pulse">▶</span> : <span className="text-green-500">✔</span>}
-                            {step.text}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
+                  <ToolExecutionLog
+                    steps={toolSteps}
+                    isActive={isToolsActive}
+                  />
                 </motion.div>
               )}
 
@@ -434,28 +715,44 @@ export default function Chat() {
         </ChatContainerRoot>
 
         {/* Floating Minimal Input Bar */}
-        <div className="absolute bottom-6 left-0 right-0 px-4 flex justify-center z-10 pt-12 pointer-events-none transition-colors duration-500 delay-[225ms]">
+        <div className={`absolute left-0 right-0 px-4 flex justify-center z-10 pointer-events-none transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${messages.length === 0
+            ? 'top-[54%] -translate-y-1/2'
+            : 'bottom-6 translate-y-0 pt-12'
+          }`}>
           <motion.div
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.2, duration: 0.5, ease: "easeOut" }}
             className="w-full max-w-2xl relative pointer-events-auto"
           >
-            <div className={`w-full relative rounded-2xl bg-white dark:bg-[#111114] border border-black/10 dark:border-[#26262b] transition-all duration-500 delay-[225ms] shadow-2xl dark:shadow-black/50 ${pendingApproval
+            <div className={`w-full relative rounded-2xl transition-all duration-700 shadow-2xl dark:shadow-black/50 ${messages.length === 0
+                ? 'bg-white dark:bg-[#1a1a1c] border border-purple-200/80 dark:border-purple-500/20 shadow-[0_8px_30px_rgb(0,0,0,0.08)] dark:shadow-[0_8px_30px_rgba(192,132,252,0.1)] scale-105'
+                : 'bg-white dark:bg-[#111114] border border-black/10 dark:border-[#26262b] scale-100'
+              } ${pendingApproval
                 ? 'shadow-[0_0_20px_rgba(245,158,11,0.25)] dark:shadow-[0_0_25px_rgba(245,158,11,0.3)] dark:ring-1 dark:ring-amber-500/50'
-                : executingAction
+                : isToolsActive
                   ? 'shadow-[0_0_20px_rgba(168,85,247,0.2)] dark:shadow-[0_0_25px_rgba(168,85,247,0.25)] dark:ring-1 dark:ring-purple-500/50'
                   : 'focus-within:shadow-[0_0_20px_rgba(168,85,247,0.15)] dark:focus-within:border-[#3b2354] dark:focus-within:ring-1 dark:focus-within:ring-[#3b2354]'
               }`}>
-              <BorderBeam size="md" colorVariant="colorful">
+              {messages.length === 0 ? (
+                <BorderBeam size="md" colorVariant="colorful">
+                  <div className="w-full">
+                    <PromptInputBox
+                      onSend={submitMessage}
+                      isLoading={isProcessing || pendingApproval || isToolsActive}
+                      placeholder={isToolsActive ? "Agent is processing..." : pendingApproval ? "Awaiting your approval..." : "Ask the agent anything..."}
+                    />
+                  </div>
+                </BorderBeam>
+              ) : (
                 <div className="w-full">
                   <PromptInputBox
                     onSend={submitMessage}
-                    isLoading={isProcessing || pendingApproval || executingAction}
-                    placeholder={executingAction ? "Agent is processing..." : pendingApproval ? "Awaiting your approval..." : "Ask the agent anything..."}
+                    isLoading={isProcessing || pendingApproval || isToolsActive}
+                    placeholder={isToolsActive ? "Agent is processing..." : pendingApproval ? "Awaiting your approval..." : "Ask the agent anything..."}
                   />
                 </div>
-              </BorderBeam>
+              )}
             </div>
           </motion.div>
         </div>

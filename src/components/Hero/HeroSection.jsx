@@ -374,7 +374,7 @@ export default function HeroSection() {
 
   return (
     <div
-      className="relative min-h-screen text-white overflow-hidden font-sans transition-colors duration-1000"
+      className="relative min-h-screen text-white overflow-hidden font-sans transition-colors duration-1000 dark"
       style={{
         background: 'radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--theme-color) 20%, #111118) 0%, #050508 100%)',
         '--theme-color': smoothConfig.color,

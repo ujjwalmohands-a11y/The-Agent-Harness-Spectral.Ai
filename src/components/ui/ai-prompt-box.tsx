@@ -5,8 +5,13 @@ import { ArrowUp, Paperclip, Square, X, StopCircle, Mic, Globe, BrainCog, Folder
 import { motion, AnimatePresence } from "framer-motion";
 import { LiveWaveform } from "./waveform";
 import { SplitText } from "./split-text";
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
+
 // Utility function for className merging
-const cn = (...classes: (string | undefined | null | false)[]) => classes.filter(Boolean).join(" ");
+function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
 
 // Embedded CSS for minimal custom styles
 const styles = `
@@ -43,7 +48,7 @@ interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement
 const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(({ className, ...props }, ref) => (
   <textarea
     className={cn(
-      "flex w-full rounded-md border-none bg-transparent px-3 py-2.5 text-base text-gray-100 placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-50 min-h-[44px] resize-none scrollbar-thin scrollbar-thumb-[#444444] scrollbar-track-transparent hover:scrollbar-thumb-[#555555]",
+      "flex w-full rounded-md border-none bg-transparent px-3 py-2.5 text-base text-zinc-900 dark:text-gray-100 caret-zinc-900 dark:caret-gray-100 placeholder:text-zinc-500 dark:placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-50 min-h-[44px] resize-none scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-[#444444] scrollbar-track-transparent hover:scrollbar-thumb-zinc-400 dark:hover:scrollbar-thumb-[#555555]",
       className
     )}
     ref={ref}
@@ -123,7 +128,7 @@ const DialogTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Title
     ref={ref}
-    className={cn("text-lg font-semibold leading-none tracking-tight text-gray-100", className)}
+    className={cn("text-lg font-semibold leading-none tracking-tight text-zinc-900 dark:text-gray-100", className)}
     {...props}
   />
 ));
@@ -278,7 +283,7 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
     >
       <div className="flex items-center gap-2 mb-3">
         <div className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
-        <span className="font-mono text-sm text-white/80">{formatTime(time)}</span>
+        <span className="font-mono text-sm text-zinc-600 dark:text-white/80">{formatTime(time)}</span>
       </div>
       <div className="w-full h-12 flex items-center justify-center px-4">
         <LiveWaveform
@@ -289,7 +294,7 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
           height={40}
           barWidth={3}
           barGap={2}
-          barColor="rgba(255, 255, 255, 0.8)"
+          barColor="rgba(161, 161, 170, 0.8)"
         />
       </div>
     </div>
@@ -789,7 +794,7 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
                 transition={{ duration: 0.4 }}
                 className="absolute inset-0 flex items-center justify-center pointer-events-none"
               >
-                <div className="text-base md:text-lg font-light tracking-wide text-white/80 flex items-center gap-2">
+                <div className="text-base md:text-lg font-light tracking-wide text-zinc-600 dark:text-white/80 flex items-center gap-2">
                   <SplitText
                     text={recordingMessage}
                     delay={30}
@@ -809,11 +814,11 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
           onStopRecording={handleStopRecording}
         />
 
-        <PromptInputActions className="flex items-center justify-between gap-2 p-0 pt-2">
+        <PromptInputActions className={cn("flex items-center gap-2 p-0 pt-2 transition-all duration-300", isRecording ? "justify-center" : "justify-between")}>
           <div
             className={cn(
-              "flex items-center gap-1 transition-opacity duration-300",
-              isRecording ? "opacity-0 invisible h-0" : "opacity-100 visible"
+              "flex items-center gap-1 transition-all duration-300",
+              isRecording ? "opacity-0 w-0 h-0 overflow-hidden pointer-events-none" : "opacity-100 w-auto"
             )}
           >
             <PromptInputAction tooltip="Upload image">
@@ -957,14 +962,14 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
             }
           >
             <Button
-              variant="default"
+              variant="ghost"
               size="icon"
               className={cn(
                 "h-8 w-8 rounded-full transition-all duration-200",
                 isRecording
-                  ? "bg-transparent hover:bg-zinc-200 dark:hover:bg-gray-600/30 dim:hover:bg-gray-600/30 text-red-500 hover:text-red-600 dark:hover:text-red-400 dim:hover:text-red-400"
+                  ? "bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-zinc-900 shadow-md shadow-black/10 dark:shadow-white/10"
                   : hasContent
-                    ? "bg-[#c084fc] hover:bg-[#a855f7] text-white shadow-lg shadow-purple-900/20"
+                    ? "bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-zinc-900 shadow-md shadow-black/10 dark:shadow-white/10"
                     : "bg-transparent hover:bg-zinc-200 dark:hover:bg-gray-600/30 dim:hover:bg-gray-600/30 text-zinc-500 dark:text-[#9CA3AF] dim:text-[#9CA3AF] hover:text-zinc-900 dark:hover:text-[#D1D5DB] dim:hover:text-[#D1D5DB]"
               )}
               onClick={() => {
@@ -977,9 +982,9 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
               {isLoading ? (
                 <Square className="h-4 w-4 fill-current animate-pulse" />
               ) : isRecording ? (
-                <StopCircle className="h-5 w-5 text-red-500" />
+                <StopCircle className="h-5 w-5 text-inherit" />
               ) : hasContent ? (
-                <ArrowUp className="h-4 w-4 text-current" />
+                <ArrowUp className="h-4 w-4 text-inherit" />
               ) : (
                 <Mic className="h-5 w-5 text-current transition-colors" />
               )}
