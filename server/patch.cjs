@@ -62,3 +62,23 @@ net.Server.prototype.listen = function(...args) {
   return originalListen.apply(this, args);
 };
 console.log("[Backend Patch] net.Server.listen patched to bind to 0.0.0.0");
+
+// CORS Patch: Automatically add CORS headers to all responses and handle OPTIONS preflight
+const http = require('http');
+const originalEmit = http.Server.prototype.emit;
+http.Server.prototype.emit = function(event, req, res) {
+  if (event === 'request') {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+    
+    if (req.method === 'OPTIONS') {
+      res.writeHead(200);
+      res.end();
+      return true; // Stop event propagation for OPTIONS
+    }
+  }
+  return originalEmit.apply(this, arguments);
+};
+console.log("[Backend Patch] CORS headers injected.");
+
