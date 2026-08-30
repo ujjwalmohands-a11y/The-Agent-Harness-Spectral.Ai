@@ -1,3 +1,25 @@
+// Load .env file manually so TrueForge picks up PORT=8000 locally
+const fs = require('fs');
+const path = require('path');
+try {
+  const envPath = path.join(__dirname, '.env');
+  if (fs.existsSync(envPath)) {
+    const envFile = fs.readFileSync(envPath, 'utf8');
+    envFile.split('\n').forEach(line => {
+      const match = line.match(/^([^=]+)=(.*)$/);
+      if (match) {
+        const key = match[1].trim();
+        // Native env vars take precedence (important for Render)
+        if (!process.env[key]) {
+          process.env[key] = match[2].trim();
+        }
+      }
+    });
+  }
+} catch (e) {
+  // ignore
+}
+
 const originalFetch = globalThis.fetch;
 
 if (originalFetch) {
