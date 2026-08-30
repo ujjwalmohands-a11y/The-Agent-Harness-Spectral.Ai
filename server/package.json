@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "node --experimental-loader ./fix-import-loader.mjs --require ./patch.cjs ./node_modules/@truefoundry/trueforge/dist/cli.js --port 8000"
+    "start": "node --experimental-loader ./fix-import-loader.mjs --require ./patch.cjs ./node_modules/@truefoundry/trueforge/dist/cli.js"
   },
   "keywords": [],
   "author": "",

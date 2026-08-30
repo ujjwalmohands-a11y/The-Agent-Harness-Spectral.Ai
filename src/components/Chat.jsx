@@ -138,20 +138,29 @@ export default function Chat() {
         });
       }
     });
-    // Add mock agent file for demonstration
-    allFiles.push({
-      name: 'cleaned_data.csv',
-      sizeFormatted: '1.2 KB',
-      type: 'text/csv',
-      source: 'agent',
-      url: '/cleaned_data.csv'
-    });
+    // Add mock agent file for demonstration only in development
+    if (import.meta.env?.DEV) {
+      allFiles.push({
+        name: 'cleaned_data.csv',
+        sizeFormatted: '1.2 KB',
+        type: 'text/csv',
+        source: 'agent',
+        url: '/cleaned_data.csv'
+      });
+    }
     return allFiles;
   }, [messages]);
   const [pendingApproval, setPendingApproval] = useState(null);
   const [executingAction, setExecutingAction] = useState(null);
   const hasCreatedSession = useRef(false);
   const mockTimerRef = useRef(null);
+  
+  const sessionIdRef = useRef(sessionId);
+  useEffect(() => {
+    sessionIdRef.current = sessionId;
+  }, [sessionId]);
+  const sessionCreationPromiseRef = useRef(null);
+  const sessionHistoryRequestTokenRef = useRef(0);
 
   // Tool execution tracking
   const [isToolsActive, setIsToolsActive] = useState(false);
@@ -253,6 +262,8 @@ export default function Chat() {
   }, []);
 
   const handleNewSession = () => {
+    sessionHistoryRequestTokenRef.current++;
+    sessionCreationPromiseRef.current = null;
     setSessionId(null);
     setMessages([]);
     hasCreatedSession.current = false;
@@ -270,12 +281,17 @@ export default function Chat() {
   };
 
   const handleSelectSession = async (id) => {
+    const currentToken = ++sessionHistoryRequestTokenRef.current;
+    sessionCreationPromiseRef.current = null;
     setSessionId(id);
     hasCreatedSession.current = true;
     setMessages([]);
     setIsProcessing(true);
     try {
       const res = await tfClient.sessions.listEvents(id);
+      
+      if (sessionHistoryRequestTokenRef.current !== currentToken) return;
+      
       const events = res.data || [];
       const newMsgs = [];
       let currentBotMsg = null;
@@ -343,10 +359,13 @@ export default function Chat() {
       });
       setMessages(newMsgs);
     } catch (e) {
+      if (sessionHistoryRequestTokenRef.current !== currentToken) return;
       console.error(e);
       setMessages([{ id: generateId(), role: 'bot', content: 'Failed to load session history.' }]);
     } finally {
-      setIsProcessing(false);
+      if (sessionHistoryRequestTokenRef.current === currentToken) {
+        setIsProcessing(false);
+      }
     }
   };
 
@@ -397,39 +416,7 @@ export default function Chat() {
 
           currentText += event.content;
 
-          // Check for intercepted sandbox action
-          const sandboxMatch = currentText.match(/<<<SANDBOX_ACTION:(.*?)>>>/s);
-          if (sandboxMatch) {
-            try {
-              const sandboxJson = JSON.parse(sandboxMatch[1]);
-              currentText = currentText.replace(sandboxMatch[0], `I have prepared a sandbox action (${sandboxJson.type}). Please review it below.`);
-              setPendingApproval({
-                isInterceptedSandbox: true,
-                sandboxDetails: sandboxJson,
-                actionTitle: 'Sandbox Action Requires Approval',
-                details: `Action: ${sandboxJson.type}\nPath: ${sandboxJson.path || 'N/A'}`,
-                code: sandboxJson.content || sandboxJson.script || null,
-              });
-            } catch (e) {
-              console.error("Failed to parse sandbox action JSON", e);
-            }
-          }
 
-          // Check for intercepted draft
-          const draftMatch = currentText.match(/<<<EMAIL_DRAFT:(.*?)>>>/s);
-          if (draftMatch) {
-            try {
-              const draftJson = JSON.parse(draftMatch[1]);
-              currentText = currentText.replace(draftMatch[0], 'I have prepared a draft. Please review it below.');
-              setPendingApproval({
-                isInterceptedDraft: true,
-                actionTitle: 'Email Draft Ready',
-                details: 'Please review the email draft before sending.',
-                code: null,
-                emailDetails: draftJson
-              });
-            } catch (e) { }
-          }
 
           setMessages(prev => prev.map(msg => msg.id === currentBotMsgId ? { ...msg, content: currentText } : msg));
         }
@@ -489,9 +476,9 @@ export default function Chat() {
           currentText += `\n\n[Backend Error: ${event.state.message}]\n\n*Note: If you see a reasoning_content error, the TrueForge backend currently has a bug with multi-turn chat for this model.*`;
           setMessages(prev => prev.map(msg => msg.id === currentBotMsgId ? { ...msg, content: currentText } : msg));
         }
-        // Mark all running tools as completed when turn finishes
+        // Mark all running tools as completed when turn finishes for the current message
         setMessages(prev => prev.map(m => {
-          if (m.toolSteps && m.toolSteps.length > 0) {
+          if (m.id === currentBotMsgId && m.toolSteps && m.toolSteps.length > 0) {
             return {
               ...m,
               toolSteps: m.toolSteps.map(s => s.status === 'running' ? { ...s, status: 'completed' } : s)
@@ -537,30 +524,29 @@ export default function Chat() {
     setIsProcessing(true);
 
     try {
-      let currentSessionId = sessionId;
+      let currentSessionId = sessionIdRef.current;
 
       if (!currentSessionId) {
-        const session = await tfClient.sessions.create({
-          agent: {
-            name: 'oliver'
-          }
-        });
-        currentSessionId = session.data.id;
-        setSessionId(currentSessionId);
-        hasCreatedSession.current = true;
-      }
-
-      const isEmailTask = /email|gmail|mail|message/i.test(finalPayload);
-      const isSandboxTask = /write|edit|delete|script|python|bash|file/i.test(finalPayload);
-      let systemInstruction = isEmailTask
-        ? "\n\n[SYSTEM: When asked to draft or send an email, DO NOT call any tool immediately. Instead, output your draft EXACTLY in this JSON format: <<<EMAIL_DRAFT:{\"to\":\"...\",\"subject\":\"...\",\"body\":\"...\"}>>> and nothing else. Wait for the user to approve before sending.]"
-        : "";
-      if (isSandboxTask) {
-        systemInstruction += "\n\n[SYSTEM: When asked to perform write, file modification, script execution, or delete operations inside /home/trueforge/, DO NOT call any tool immediately. Instead, output your action EXACTLY in this JSON format: <<<SANDBOX_ACTION:{\"type\":\"tool_name\",\"path\":\"...\",\"content\":\"...\"}>>> and nothing else. Wait for the user to approve before executing.]";
+        if (!sessionCreationPromiseRef.current) {
+          sessionCreationPromiseRef.current = tfClient.sessions.create({
+            agent: {
+              name: 'oliver'
+            }
+          }).then(session => {
+            const newId = session.data.id;
+            setSessionId(newId);
+            hasCreatedSession.current = true;
+            return newId;
+          }).catch(err => {
+            sessionCreationPromiseRef.current = null;
+            throw err;
+          });
+        }
+        currentSessionId = await sessionCreationPromiseRef.current;
       }
 
       let finalContent;
-      const combinedText = finalPayload + systemInstruction;
+      const combinedText = finalPayload;
 
       if (sdkContentItems.length > 0) {
         finalContent = [];
@@ -611,52 +597,17 @@ export default function Chat() {
     setIsProcessing(true);
 
     try {
-      if (pendingApproval.isInterceptedSandbox) {
-        if (decision === 'APPROVED') {
-          const payload = `I approve the sandbox action. Please proceed to call the appropriate tool exactly as drafted: Type: ${pendingApproval.sandboxDetails.type}, Path: ${pendingApproval.sandboxDetails.path || 'N/A'}, Content/Script: ${pendingApproval.sandboxDetails.content || pendingApproval.sandboxDetails.script || 'N/A'}`;
-          const stream = await tfClient.sessions.createTurnStream(sessionId, {
-            input: [{ type: 'user.message', content: payload }]
-          });
-          const botMsgId = generateId();
-          setMessages((prev) => [...prev, { id: botMsgId, role: 'bot', content: '', toolSteps: [] }]);
-          await processTrueForgeStream(stream, botMsgId);
-        } else {
-          const payload = "I rejected the sandbox action. Do not proceed. Please make changes based on my next instructions.";
-          const stream = await tfClient.sessions.createTurnStream(sessionId, {
-            input: [{ type: 'user.message', content: payload }]
-          });
-          const botMsgId = generateId();
-          setMessages((prev) => [...prev, { id: botMsgId, role: 'bot', content: '', toolSteps: [] }]);
-          await processTrueForgeStream(stream, botMsgId);
-        }
-        return;
-      }
-
-      if (pendingApproval.isInterceptedDraft) {
-        if (decision === 'APPROVED') {
-          const payload = `I approve the email draft. Please proceed to call the gmail_send_email tool exactly as drafted: To: ${pendingApproval.emailDetails.to}, Subject: ${pendingApproval.emailDetails.subject}. Body: ${pendingApproval.emailDetails.body}`;
-          const stream = await tfClient.sessions.createTurnStream(sessionId, {
-            input: [{ type: 'user.message', content: payload }]
-          });
-          const botMsgId = generateId();
-          setMessages((prev) => [...prev, { id: botMsgId, role: 'bot', content: '', toolSteps: [] }]);
-          await processTrueForgeStream(stream, botMsgId);
-        } else {
-          setMessages((prev) => [...prev, { id: generateId(), role: 'bot', content: 'Email draft discarded.' }]);
-        }
-      } else {
-        const stream = await tfClient.sessions.createTurnStream(sessionId, {
-          input: [{
-            type: 'user.tool_approval',
-            threadId: currentThreadId,
-            toolCallId: currentApprovalId,
-            approval: { status: decision === 'APPROVED' ? 'allow' : 'deny' }
-          }]
-        });
-        const botMsgId = generateId();
-        setMessages((prev) => [...prev, { id: botMsgId, role: 'bot', content: '', toolSteps: [] }]);
-        await processTrueForgeStream(stream, botMsgId);
-      }
+      const stream = await tfClient.sessions.createTurnStream(sessionId, {
+        input: [{
+          type: 'user.tool_approval',
+          threadId: currentThreadId,
+          toolCallId: currentApprovalId,
+          approval: { status: decision === 'APPROVED' ? 'allow' : 'deny' }
+        }]
+      });
+      const botMsgId = generateId();
+      setMessages((prev) => [...prev, { id: botMsgId, role: 'bot', content: '', toolSteps: [] }]);
+      await processTrueForgeStream(stream, botMsgId);
     } catch (error) {
       console.error('Failed to send approval:', error);
       setMessages((prev) => [

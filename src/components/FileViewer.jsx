@@ -6,6 +6,7 @@ export default function FileViewer({ file, onClose }) {
   const [content, setContent] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState(null);
 
   const isImage = file?.type?.startsWith('image/') || file?.name?.match(/\.(jpg|jpeg|png|gif)$/i);
   const isCSV = file?.name?.endsWith('.csv') || file?.type === 'text/csv';
@@ -13,7 +14,16 @@ export default function FileViewer({ file, onClose }) {
   useEffect(() => {
     if (!file) return;
 
-    if (!isImage) {
+    let objectUrl = null;
+
+    if (isImage) {
+      if (file.url) {
+        setImagePreviewUrl(file.url);
+      } else if (file.rawFile) {
+        objectUrl = URL.createObjectURL(file.rawFile);
+        setImagePreviewUrl(objectUrl);
+      }
+    } else {
       setLoading(true);
       setError(null);
       
@@ -40,6 +50,12 @@ export default function FileViewer({ file, onClose }) {
 
       fetchFileContent();
     }
+
+    return () => {
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
+    };
   }, [file, isImage]);
 
   // A robust custom CSV parser handling quotes
@@ -210,7 +226,7 @@ export default function FileViewer({ file, onClose }) {
               ) : isImage ? (
                 <div className="w-full h-full flex items-center justify-center p-6 bg-zinc-100/50 dark:bg-[#08080a]">
                   <img 
-                    src={file.url || URL.createObjectURL(file.rawFile)} 
+                    src={imagePreviewUrl} 
                     alt={file.name} 
                     className="max-w-full max-h-full object-contain rounded-lg shadow-sm border border-zinc-200 dark:border-zinc-800"
                   />

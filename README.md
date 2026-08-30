@@ -1,16 +1,109 @@
-# React + Vite
+# 🚀 Approval-Gated Assistant: Quick Start Guide
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Welcome to the **Approval-Gated Assistant**! This guide is designed to help you get this powerful, human-in-the-loop AI agent up and running on your local machine from scratch. 
 
-Currently, two official plugins are available:
+If you are a first-time user and don't have any API keys configured yet, don't worry! We will walk you through cloning the repository, setting up the TrueForge backend (running on `localhost:8000`), adding your own API keys to it, and finally running the frontend (running on `localhost:5000`).
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Let's get building! 🛠️
 
-## React Compiler
+---
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## 1. 📦 Prerequisites
 
-## Expanding the Oxlint configuration
+Before we dive in, make sure your development environment has the following tools installed:
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+- **[Node.js](https://nodejs.org/en/download/)** (v18.x or later recommended)
+- **Package Manager**: **[npm](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm)** (comes with Node.js) or **[Yarn](https://yarnpkg.com/getting-started/install)**
+- **[Git](https://git-scm.com/downloads)**: To clone the repository
+- **[Python](https://www.python.org/downloads/)** (often required for the TrueForge backend)
+
+---
+
+## 2. 📥 Cloning the Repository & Downloading TrueForge
+
+First, you need to get the source code for both the Approval-Gated Assistant frontend and the TrueForge backend. 
+
+Open your terminal and run the following commands:
+
+```bash
+# Clone the repository
+git clone https://github.com/your-username/approval-gated-assistant.git
+
+# Navigate into the project directory
+cd approval-gated-assistant
+```
+
+*(Note: Depending on how your project is structured, the TrueForge backend might be included in a subfolder like `server/` or `backend/`, or it might be a separate repository. We will assume it's located in the `server/` directory for this guide).*
+
+---
+
+## 3. ⚙️ Setting Up the TrueForge Backend (`localhost:8000`)
+
+The TrueForge backend acts as the engine for the assistant. You'll need to configure it with your API keys (such as Groq, Notion, or OpenAI) before running it.
+
+### Adding Your API Keys
+You don't need any API keys to just view the code, but to make the agent functional, you will need to add them to the backend server.
+
+1. Navigate to the backend directory:
+   ```bash
+   cd server
+   ```
+2. Create a new environment variable file:
+   ```bash
+   cp .env.example .env
+   ```
+   *(If there is no `.env.example`, simply create a new file named `.env`)*
+3. Open the `.env` file in your code editor and add your API keys. It should look something like this:
+   ```env
+   # TrueForge Backend Environment Variables
+   PORT=8000
+   
+   # Add your specific API keys here when you get them:
+   # GROQ_API_KEY="your_groq_api_key"
+   # NOTION_API_KEY="your_notion_api_key"
+   ```
+
+### Running the Backend
+Once your `.env` is set up, install the dependencies and start the TrueForge server.
+
+```bash
+# Install backend dependencies (e.g., using npm)
+npm install
+
+# Start the TrueForge backend server
+npm start
+```
+🎉 The TrueForge backend should now be running at **http://localhost:8000**. Keep this terminal window open!
+
+### Making Changes to the Backend
+If you need to modify how the agent handles approvals or add new tools, you can edit the files within the `server/` directory. The backend will typically auto-reload or require a restart (e.g., `npm run dev`) depending on your setup.
+
+---
+
+## 4. 🎨 Running the Frontend (`localhost:5000`)
+
+With the TrueForge backend running, it's time to start the frontend user interface.
+
+1. Open a **new** terminal window (leave the backend running in the first one).
+2. Navigate to the root directory of your cloned repository:
+   ```bash
+   cd approval-gated-assistant
+   ```
+3. Install the frontend dependencies:
+   ```bash
+   npm install
+   ```
+4. Start the frontend development server on port 5000:
+   ```bash
+   # If your package.json has a dev script configured for port 5000
+   npm run dev
+   ```
+   *(Note: You can force it to run on port 5000 by using `PORT=5000 npm run dev` on Mac/Linux or setting it in your `.env.local` file).*
+
+🎉 **Success!** Open your browser and navigate to **[http://localhost:5000](http://localhost:5000)**. 
+
+You should now see the Approval-Gated Assistant interface, successfully communicating with your TrueForge backend!
+
+---
+
+*Need help? Feel free to open an issue on our GitHub repository. Happy coding!*
