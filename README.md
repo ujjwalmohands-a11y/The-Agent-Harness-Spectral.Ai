@@ -98,11 +98,21 @@ With the TrueForge backend running, it's time to start the frontend user interfa
    ```bash
    cd approval-gated-assistant
    ```
-3. Install the frontend dependencies:
+3. Create the frontend environment variable file:
+   ```bash
+   cp .env.example .env
+   ```
+4. Open the `.env` file and add your Groq API key for transcription support:
+   ```env
+   # Frontend Environment Variables
+   VITE_TRUEFORGE_URL=/
+   GROQ_API_KEY="your_groq_api_key"
+   ```
+5. Install the frontend dependencies:
    ```bash
    npm install
    ```
-4. Start the frontend development server on port 5000:
+6. Start the frontend development server on port 5000:
    ```bash
    # If your package.json has a dev script configured for port 5000
    npm run dev
