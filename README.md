@@ -75,6 +75,15 @@ npm start
 ```
 🎉 The TrueForge backend should now be running at **http://localhost:8000**. Keep this terminal window open!
 
+### 🔑 First-Time TrueForge Configuration
+
+Because TrueForge stores its configurations securely in a local SQLite database, you **must** manually add your API keys through its dashboard the very first time you run it.
+
+1. Once the backend is running, open **[http://localhost:8000](http://localhost:8000)** in your browser.
+2. Go to the **Providers** (or Models) tab. Click "Add Provider", select **Groq**, and paste your Groq API key (`gsk_...`).
+3. Go to the **Skills** (or Tools) tab. Configure the **Daytona** sandbox and paste your Daytona API key (`dtn_...`).
+4. Save your changes. These will be permanently saved to your local database so you only have to do this once!
+
 ### Making Changes to the Backend
 If you need to modify how the agent handles approvals or add new tools, you can edit the files within the `server/` directory. The backend will typically auto-reload or require a restart (e.g., `npm run dev`) depending on your setup.
 
