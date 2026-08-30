@@ -44,6 +44,38 @@ const INITIAL_COMPONENTS = {
   pre: function PreComponent({ children }) {
     return <>{children}</>
   },
+  table: ({ children, ...props }) => (
+    <div className="w-full overflow-x-auto my-4 custom-scrollbar rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#0c0c0e]">
+      <table className="w-full text-left border-collapse text-[13px]" {...props}>
+        {children}
+      </table>
+    </div>
+  ),
+  thead: ({ children, ...props }) => (
+    <thead className="bg-zinc-50 dark:bg-[#151515] border-b border-zinc-200 dark:border-zinc-800" {...props}>
+      {children}
+    </thead>
+  ),
+  tbody: ({ children, ...props }) => (
+    <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/50" {...props}>
+      {children}
+    </tbody>
+  ),
+  tr: ({ children, ...props }) => (
+    <tr className="hover:bg-zinc-50/50 dark:hover:bg-white/[0.02] transition-colors" {...props}>
+      {children}
+    </tr>
+  ),
+  th: ({ children, ...props }) => (
+    <th className="px-4 py-3 font-semibold text-zinc-700 dark:text-zinc-300 border-r border-zinc-200 dark:border-zinc-800 last:border-0 whitespace-nowrap" {...props}>
+      {children}
+    </th>
+  ),
+  td: ({ children, ...props }) => (
+    <td className="px-4 py-2.5 text-zinc-600 dark:text-zinc-400 border-r border-zinc-100 dark:border-zinc-800/50 last:border-0 align-top" {...props}>
+      {children}
+    </td>
+  ),
 }
 
 const MemoizedMarkdownBlock = memo(function MarkdownBlock({

@@ -1,12 +1,17 @@
 import React from "react";
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { ArrowUp, Paperclip, Square, X, StopCircle, Mic, Globe, BrainCog, FolderCode } from "lucide-react";
+import { ArrowUp, Paperclip, Square, X, StopCircle, Mic, Globe, BrainCog, FolderCode, FileText } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { LiveWaveform } from "./waveform";
 import { SplitText } from "./split-text";
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
+
 // Utility function for className merging
-const cn = (...classes: (string | undefined | null | false)[]) => classes.filter(Boolean).join(" ");
+function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
 
 // Embedded CSS for minimal custom styles
 const styles = `
@@ -43,7 +48,7 @@ interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement
 const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(({ className, ...props }, ref) => (
   <textarea
     className={cn(
-      "flex w-full rounded-md border-none bg-transparent px-3 py-2.5 text-base text-gray-100 placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-50 min-h-[44px] resize-none scrollbar-thin scrollbar-thumb-[#444444] scrollbar-track-transparent hover:scrollbar-thumb-[#555555]",
+      "flex w-full rounded-md border-none bg-transparent px-3 py-2.5 text-base text-zinc-900 dark:text-gray-100 caret-zinc-900 dark:caret-gray-100 placeholder:text-zinc-500 dark:placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-50 min-h-[44px] resize-none scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-[#444444] scrollbar-track-transparent hover:scrollbar-thumb-zinc-400 dark:hover:scrollbar-thumb-[#555555]",
       className
     )}
     ref={ref}
@@ -123,7 +128,7 @@ const DialogTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Title
     ref={ref}
-    className={cn("text-lg font-semibold leading-none tracking-tight text-gray-100", className)}
+    className={cn("text-lg font-semibold leading-none tracking-tight text-zinc-900 dark:text-gray-100", className)}
     {...props}
   />
 ));
@@ -278,7 +283,7 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
     >
       <div className="flex items-center gap-2 mb-3">
         <div className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
-        <span className="font-mono text-sm text-white/80">{formatTime(time)}</span>
+        <span className="font-mono text-sm text-zinc-600 dark:text-white/80">{formatTime(time)}</span>
       </div>
       <div className="w-full h-12 flex items-center justify-center px-4">
         <LiveWaveform
@@ -289,7 +294,7 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
           height={40}
           barWidth={3}
           barGap={2}
-          barColor="rgba(255, 255, 255, 0.8)"
+          barColor="rgba(161, 161, 170, 0.8)"
         />
       </div>
     </div>
@@ -559,12 +564,8 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
   const isImageFile = (file: File) => file.type.startsWith("image/");
 
   const processFile = (file: File) => {
-    if (!isImageFile(file)) {
-      console.log("Only image files are allowed");
-      return;
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      console.log("File too large (max 10MB)");
+    if (file.size > 25 * 1024 * 1024) {
+      console.log("File too large (max 25MB)");
       return;
     }
     setFiles([file]);
@@ -586,9 +587,8 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
   const handleDrop = React.useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    const files = Array.from(e.dataTransfer.files);
-    const imageFiles = files.filter((file) => isImageFile(file));
-    if (imageFiles.length > 0) processFile(imageFiles[0]);
+    const droppedFiles = Array.from(e.dataTransfer.files);
+    if (droppedFiles.length > 0) processFile(droppedFiles[0]);
   }, []);
 
   const handleRemoveFile = (index: number) => {
@@ -603,7 +603,7 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
     const items = e.clipboardData?.items;
     if (!items) return;
     for (let i = 0; i < items.length; i++) {
-      if (items[i].type.indexOf("image") !== -1) {
+      if (items[i].kind === "file") {
         const file = items[i].getAsFile();
         if (file) {
           e.preventDefault();
@@ -728,7 +728,7 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
           <div className="flex flex-wrap gap-2 p-0 pb-1 transition-all duration-300">
             {files.map((file, index) => (
               <div key={index} className="relative group">
-                {file.type.startsWith("image/") && filePreviews[file.name] && (
+                {file.type.startsWith("image/") && filePreviews[file.name] ? (
                   <div
                     className="w-16 h-16 rounded-xl overflow-hidden cursor-pointer transition-all duration-300"
                     onClick={() => openImageModal(filePreviews[file.name])}
@@ -746,6 +746,25 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
                       className="absolute top-1 right-1 rounded-full bg-black/70 p-0.5 opacity-100 transition-opacity"
                     >
                       <X className="h-3 w-3 text-white" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 bg-zinc-100 dark:bg-[#1A1A1D] border border-zinc-200 dark:border-[#333333] p-1.5 pr-3 rounded-lg w-auto h-12 relative group/file shadow-sm">
+                    <div className="w-9 h-9 flex items-center justify-center bg-white dark:bg-[#2A2A2D] rounded shadow-sm text-zinc-500 dark:text-zinc-400">
+                       <FileText className="w-4 h-4" />
+                    </div>
+                    <div className="flex-1 min-w-0 flex flex-col justify-center max-w-[140px]">
+                      <span className="text-[12.5px] font-medium text-zinc-700 dark:text-gray-200 truncate leading-tight">{file.name}</span>
+                      <span className="text-[10px] text-zinc-500 dark:text-gray-400 mt-0.5">{(file.size / 1024).toFixed(1)} KB</span>
+                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRemoveFile(index);
+                      }}
+                      className="absolute -top-1.5 -right-1.5 rounded-full bg-zinc-200 hover:bg-zinc-300 dark:bg-[#333333] dark:hover:bg-[#444444] border border-white dark:border-[#1F2023] p-[3px] shadow-sm opacity-0 group-hover/file:opacity-100 transition-opacity"
+                    >
+                      <X className="h-3 w-3 text-zinc-700 dark:text-gray-300" />
                     </button>
                   </div>
                 )}
@@ -789,7 +808,7 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
                 transition={{ duration: 0.4 }}
                 className="absolute inset-0 flex items-center justify-center pointer-events-none"
               >
-                <div className="text-base md:text-lg font-light tracking-wide text-white/80 flex items-center gap-2">
+                <div className="text-base md:text-lg font-light tracking-wide text-zinc-600 dark:text-white/80 flex items-center gap-2">
                   <SplitText
                     text={recordingMessage}
                     delay={30}
@@ -809,11 +828,11 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
           onStopRecording={handleStopRecording}
         />
 
-        <PromptInputActions className="flex items-center justify-between gap-2 p-0 pt-2">
+        <PromptInputActions className={cn("flex items-center gap-2 p-0 pt-2 transition-all duration-300", isRecording ? "justify-center" : "justify-between")}>
           <div
             className={cn(
-              "flex items-center gap-1 transition-opacity duration-300",
-              isRecording ? "opacity-0 invisible h-0" : "opacity-100 visible"
+              "flex items-center gap-1 transition-all duration-300",
+              isRecording ? "opacity-0 w-0 h-0 overflow-hidden pointer-events-none" : "opacity-100 w-auto"
             )}
           >
             <PromptInputAction tooltip="Upload image">
@@ -831,7 +850,7 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
                     if (e.target.files && e.target.files.length > 0) processFile(e.target.files[0]);
                     if (e.target) e.target.value = "";
                   }}
-                  accept="image/*"
+                  accept="*/*"
                 />
               </button>
             </PromptInputAction>
@@ -957,14 +976,14 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
             }
           >
             <Button
-              variant="default"
+              variant="ghost"
               size="icon"
               className={cn(
                 "h-8 w-8 rounded-full transition-all duration-200",
                 isRecording
-                  ? "bg-transparent hover:bg-zinc-200 dark:hover:bg-gray-600/30 dim:hover:bg-gray-600/30 text-red-500 hover:text-red-600 dark:hover:text-red-400 dim:hover:text-red-400"
+                  ? "bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-zinc-900 shadow-md shadow-black/10 dark:shadow-white/10"
                   : hasContent
-                    ? "bg-[#c084fc] hover:bg-[#a855f7] text-white shadow-lg shadow-purple-900/20"
+                    ? "bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-zinc-900 shadow-md shadow-black/10 dark:shadow-white/10"
                     : "bg-transparent hover:bg-zinc-200 dark:hover:bg-gray-600/30 dim:hover:bg-gray-600/30 text-zinc-500 dark:text-[#9CA3AF] dim:text-[#9CA3AF] hover:text-zinc-900 dark:hover:text-[#D1D5DB] dim:hover:text-[#D1D5DB]"
               )}
               onClick={() => {
@@ -977,9 +996,9 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
               {isLoading ? (
                 <Square className="h-4 w-4 fill-current animate-pulse" />
               ) : isRecording ? (
-                <StopCircle className="h-5 w-5 text-red-500" />
+                <StopCircle className="h-5 w-5 text-inherit" />
               ) : hasContent ? (
-                <ArrowUp className="h-4 w-4 text-current" />
+                <ArrowUp className="h-4 w-4 text-inherit" />
               ) : (
                 <Mic className="h-5 w-5 text-current transition-colors" />
               )}

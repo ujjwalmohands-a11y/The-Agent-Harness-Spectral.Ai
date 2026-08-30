@@ -23,11 +23,12 @@ const MessageAvatar = ({
   alt,
   fallback,
   delayMs,
-  className
+  className,
+  imageClassName
 }) => {
   return (
     <Avatar className={cn("h-8 w-8 shrink-0", className)}>
-      <AvatarImage src={src} alt={alt} />
+      <AvatarImage src={src} alt={alt} className={imageClassName} />
       {fallback && (
         <AvatarFallback delayMs={delayMs}>{fallback}</AvatarFallback>
       )}
@@ -42,12 +43,12 @@ const MessageContent = ({
   className,
   ...props
 }) => {
-  const baseClasses = "px-4 py-2.5 text-[15px] leading-relaxed break-words whitespace-pre-wrap max-w-none";
+  const baseClasses = "text-[15px] leading-relaxed break-words whitespace-pre-wrap max-w-none";
   
   // Clean Nuxt UI aesthetic: solid soft color for user, minimal/transparent for system
   const roleClasses = role === 'user' 
-    ? "rounded-2xl bg-white/10 text-white rounded-br-sm"
-    : "text-gray-200 prose prose-invert";
+    ? "px-4 py-2.5 rounded-2xl bg-zinc-900 dark:bg-white/10 text-white rounded-br-sm shadow-sm"
+    : "px-4 py-0.5 text-zinc-800 dark:text-gray-200 prose dark:prose-invert";
 
   const classNames = cn(baseClasses, roleClasses, className);
 

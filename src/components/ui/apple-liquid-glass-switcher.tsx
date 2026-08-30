@@ -34,11 +34,11 @@ const themeOptions: { value: Theme; cOption: string; icon: React.ReactNode }[] =
 ];
 
 export function ThemeSwitcher({
-  defaultValue = "dark",
+  defaultValue = "light",
   value,
   onValueChange,
 }: ThemeSwitcherProps) {
-  // Try to read current theme from document element to match actual state, default to 'dark' for this app
+  // Try to read current theme from document element to match actual state, default to 'light' for this app
   const [internalValue, setInternalValue] = useState<Theme>(defaultValue);
   const activeValue = value ?? internalValue;
 

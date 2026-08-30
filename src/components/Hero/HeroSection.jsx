@@ -13,6 +13,7 @@ import { NavBar } from '@/components/ui/tubelight-navbar';
 import { PromptInputBox } from '@/components/ui/ai-prompt-box';
 import { BorderBeam } from '@/components/ui/border-beam';
 import CurvedLoop from './CurvedLoop';
+import RotatingText from '@/components/ui/RotatingText';
 import './MinimalHero.css';
 
 const PRESETS = {
@@ -356,10 +357,23 @@ export default function HeroSection() {
   const [isChatActive, setIsChatActive] = useState(false);
 
   const navItems = [
-    { name: 'Home', url: '/', icon: Home },
-    { name: 'Team', url: '#', icon: Users, onClick: () => { setIsTeamOpen(!isTeamOpen); setIsTerminalOpen(false); } },
-    { name: 'Whisper', url: '#', icon: MessageSquarePlus, onClick: () => console.log("Open feedback modal") },
-    { name: 'Chat', url: '/chat', icon: Sparkles }
+    { 
+      name: 'Home', 
+      url: '/', 
+      icon: Home, 
+      onClick: () => { setIsTeamOpen(false); setIsTerminalOpen(false); }
+    },
+    { 
+      name: 'Team', 
+      url: '#', 
+      icon: Users, 
+      onClick: () => { setIsTeamOpen(true); setIsTerminalOpen(false); } 
+    },
+    { 
+      name: 'Chat', 
+      url: '/chat', 
+      icon: Sparkles 
+    }
   ];
 
   const isCustomColor = !PRESETS[activePreset] || PRESETS[activePreset].color !== config.color;
@@ -374,7 +388,7 @@ export default function HeroSection() {
 
   return (
     <div
-      className="relative min-h-screen text-white overflow-hidden font-sans transition-colors duration-1000"
+      className="relative min-h-screen text-white overflow-hidden font-sans transition-colors duration-1000 dark"
       style={{
         background: 'radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--theme-color) 20%, #111118) 0%, #050508 100%)',
         '--theme-color': smoothConfig.color,
@@ -382,6 +396,8 @@ export default function HeroSection() {
         '--theme-c2': smoothConfig.colors[1] || smoothConfig.colors[0],
         '--theme-glow': hexToRgba(smoothConfig.color, 0.4),
         '--theme-glow-strong': hexToRgba(smoothConfig.color, 0.8),
+        maskImage: 'linear-gradient(to bottom, black 85%, transparent 100%)',
+        WebkitMaskImage: 'linear-gradient(to bottom, black 85%, transparent 100%)',
       }}
     >
 
@@ -428,16 +444,22 @@ export default function HeroSection() {
       <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-[#050508]/80 to-transparent z-10 pointer-events-none" />
       <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-[#050508] to-transparent z-10 pointer-events-none" />
 
-      <NavBar items={navItems} />
+      <NavBar items={navItems} activeTab={isTeamOpen ? 'Team' : 'Home'} />
 
-      {/* Floating Theme Button */}
-      <button
-        onClick={() => { setIsTerminalOpen(!isTerminalOpen); setIsTeamOpen(false); }}
-        className="fixed right-4 bottom-24 sm:right-6 sm:bottom-6 z-50 flex items-center gap-2 px-3 py-2 sm:px-3 sm:py-2.5 rounded-full bg-black/40 border border-white/10 hover:bg-black/70 backdrop-blur-xl transition-all duration-300 shadow-[0_8px_32px_rgba(0,0,0,0.5)] hover:shadow-[0_8px_40px_var(--theme-glow)] text-white font-medium text-[10px] sm:text-xs group"
-      >
-        <Palette className="w-4 h-4 text-[var(--theme-color)] group-hover:scale-110 transition-transform" />
-        Change Theme
-      </button>
+      {/* Top Left Watermark */}
+      <div className="fixed top-4 left-6 sm:top-5 sm:left-8 z-50 flex flex-row items-center gap-2 opacity-70 hover:opacity-100 transition-opacity cursor-default drop-shadow-lg">
+        <span className="text-[10px] sm:text-[11px] font-medium text-[#94A3B8] tracking-[0.25em] uppercase" style={{ textShadow: '0 2px 4px rgba(0,0,0,0.8)' }}>
+          Presented To
+        </span>
+        <img
+          src="/We make devs.svg"
+          alt="WeMakeDevs"
+          className="h-10 sm:h-12 object-contain drop-shadow-2xl"
+          style={{ aspectRatio: '441/138' }}
+        />
+      </div>
+
+
 
       {/* Foreground */}
       <div className="relative z-20">
@@ -673,10 +695,32 @@ export default function HeroSection() {
               </h1>
 
               {/* 2. Professional Subtext */}
-              <p className="subtitle text-center">
-                <span className="brand-tag">Spectral AI • Guided by TrueForge</span>
-                Let your models query, test, and build. Never worry about what they break.
-              </p>
+              <div className="flex flex-col items-center justify-center py-2 mb-10 mt-2 w-full max-w-none px-4">
+                <span className="text-[11.5px] font-medium text-[#94A3B8] tracking-[0.2em] uppercase mb-4" style={{ textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>
+                  SPECTRAL AI · GUIDED BY TRUEFORGE
+                </span>
+                <div
+                  className="text-[#E2E8F0] font-normal text-[15px] sm:text-[16px] text-center w-full leading-relaxed tracking-wide flex items-center justify-center flex-wrap gap-x-1.5"
+                  style={{ textShadow: '0 2px 8px rgba(0,0,0,0.5)' }}
+                >
+                  Delegates tasks across
+                  <RotatingText
+                    texts={['Notion', 'Gmail', 'Calendar', 'Sheets']}
+                    mainClassName="px-2 sm:px-3 bg-[#00F0FF] text-black overflow-hidden py-0.5 sm:py-1 justify-center rounded-lg font-medium inline-flex transition-all duration-300"
+                    style={{ boxShadow: '0 0 15px rgba(0, 240, 255, 0.5)' }}
+                    staggerFrom="last"
+                    initial={{ y: "100%" }}
+                    animate={{ y: 0 }}
+                    exit={{ y: "-120%" }}
+                    staggerDuration={0.025}
+                    splitLevelClassName="overflow-hidden pb-0.5 sm:pb-1"
+                    transition={{ type: "spring", damping: 30, stiffness: 400 }}
+                    rotationInterval={2000}
+                  />
+
+                </div>
+              </div>
+
 
               {/* 3. AI Chat Box */}
               <div className="relative group w-full mt-4">
