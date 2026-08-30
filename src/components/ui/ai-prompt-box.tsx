@@ -1,7 +1,7 @@
 import React from "react";
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { ArrowUp, Paperclip, Square, X, StopCircle, Mic, Globe, BrainCog, FolderCode } from "lucide-react";
+import { ArrowUp, Paperclip, Square, X, StopCircle, Mic, Globe, BrainCog, FolderCode, FileText } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { LiveWaveform } from "./waveform";
 import { SplitText } from "./split-text";
@@ -564,12 +564,8 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
   const isImageFile = (file: File) => file.type.startsWith("image/");
 
   const processFile = (file: File) => {
-    if (!isImageFile(file)) {
-      console.log("Only image files are allowed");
-      return;
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      console.log("File too large (max 10MB)");
+    if (file.size > 25 * 1024 * 1024) {
+      console.log("File too large (max 25MB)");
       return;
     }
     setFiles([file]);
@@ -591,9 +587,8 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
   const handleDrop = React.useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    const files = Array.from(e.dataTransfer.files);
-    const imageFiles = files.filter((file) => isImageFile(file));
-    if (imageFiles.length > 0) processFile(imageFiles[0]);
+    const droppedFiles = Array.from(e.dataTransfer.files);
+    if (droppedFiles.length > 0) processFile(droppedFiles[0]);
   }, []);
 
   const handleRemoveFile = (index: number) => {
@@ -608,7 +603,7 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
     const items = e.clipboardData?.items;
     if (!items) return;
     for (let i = 0; i < items.length; i++) {
-      if (items[i].type.indexOf("image") !== -1) {
+      if (items[i].kind === "file") {
         const file = items[i].getAsFile();
         if (file) {
           e.preventDefault();
@@ -733,7 +728,7 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
           <div className="flex flex-wrap gap-2 p-0 pb-1 transition-all duration-300">
             {files.map((file, index) => (
               <div key={index} className="relative group">
-                {file.type.startsWith("image/") && filePreviews[file.name] && (
+                {file.type.startsWith("image/") && filePreviews[file.name] ? (
                   <div
                     className="w-16 h-16 rounded-xl overflow-hidden cursor-pointer transition-all duration-300"
                     onClick={() => openImageModal(filePreviews[file.name])}
@@ -751,6 +746,25 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
                       className="absolute top-1 right-1 rounded-full bg-black/70 p-0.5 opacity-100 transition-opacity"
                     >
                       <X className="h-3 w-3 text-white" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 bg-zinc-100 dark:bg-[#1A1A1D] border border-zinc-200 dark:border-[#333333] p-1.5 pr-3 rounded-lg w-auto h-12 relative group/file shadow-sm">
+                    <div className="w-9 h-9 flex items-center justify-center bg-white dark:bg-[#2A2A2D] rounded shadow-sm text-zinc-500 dark:text-zinc-400">
+                       <FileText className="w-4 h-4" />
+                    </div>
+                    <div className="flex-1 min-w-0 flex flex-col justify-center max-w-[140px]">
+                      <span className="text-[12.5px] font-medium text-zinc-700 dark:text-gray-200 truncate leading-tight">{file.name}</span>
+                      <span className="text-[10px] text-zinc-500 dark:text-gray-400 mt-0.5">{(file.size / 1024).toFixed(1)} KB</span>
+                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRemoveFile(index);
+                      }}
+                      className="absolute -top-1.5 -right-1.5 rounded-full bg-zinc-200 hover:bg-zinc-300 dark:bg-[#333333] dark:hover:bg-[#444444] border border-white dark:border-[#1F2023] p-[3px] shadow-sm opacity-0 group-hover/file:opacity-100 transition-opacity"
+                    >
+                      <X className="h-3 w-3 text-zinc-700 dark:text-gray-300" />
                     </button>
                   </div>
                 )}
@@ -836,7 +850,7 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
                     if (e.target.files && e.target.files.length > 0) processFile(e.target.files[0]);
                     if (e.target) e.target.value = "";
                   }}
-                  accept="image/*"
+                  accept="*/*"
                 />
               </button>
             </PromptInputAction>

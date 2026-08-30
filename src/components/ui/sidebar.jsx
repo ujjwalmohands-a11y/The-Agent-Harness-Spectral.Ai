@@ -9,12 +9,14 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Command,
-  Trash2
+  Trash2,
+  Blocks,
+  FolderOpen
 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
-export const Sidebar = ({ isCollapsed, toggleSidebar, className, sessions = [], onNewSession, onSelectSession, onDeleteSession, currentSessionId }) => {
+export const Sidebar = ({ isCollapsed, toggleSidebar, className, sessions = [], onNewSession, onSelectSession, onDeleteSession, currentSessionId, onOpenFiles }) => {
   const [isHovered, setIsHovered] = useState(false);
   const isExpanded = !isCollapsed || isHovered;
 
@@ -86,7 +88,7 @@ export const Sidebar = ({ isCollapsed, toggleSidebar, className, sessions = [], 
           width: isCollapsed ? 0 : 280,
         }}
         className={cn(
-          "shrink-0 relative h-screen z-40",
+          "shrink-0 relative h-screen z-[100]",
           className
         )}
       >
@@ -100,9 +102,9 @@ export const Sidebar = ({ isCollapsed, toggleSidebar, className, sessions = [], 
           onMouseLeave={() => setIsHovered(false)}
           className={cn(
             "flex flex-col overflow-hidden transition-colors duration-500 delay-150",
-            "bg-zinc-100/50 dark:bg-[#0c0c0e] dim:bg-zinc-950",
+            "bg-white dark:bg-[#0c0c0e] dim:bg-zinc-950",
             isHovered && isCollapsed
-              ? "absolute left-0 top-3 bottom-3 rounded-r-xl border-r border-y border-black/10 dark:border-white/10 dim:border-white/10 shadow-[10px_10px_40px_rgba(0,0,0,0.3)] dark:shadow-[10px_10px_40px_rgba(0,0,0,0.7)] dim:shadow-[10px_10px_40px_rgba(0,0,0,0.5)] z-50"
+              ? "absolute left-0 top-3 bottom-3 rounded-r-xl border-r border-y border-black/10 dark:border-white/10 dim:border-white/10 shadow-[10px_10px_40px_rgba(0,0,0,0.3)] dark:shadow-[10px_10px_40px_rgba(0,0,0,0.7)] dim:shadow-[10px_10px_40px_rgba(0,0,0,0.5)] z-[110]"
               : "relative h-screen border-r border-black/10 dark:border-[#26262b] dim:border-white/5 shadow-[4px_0_24px_rgba(0,0,0,0.05)] dark:shadow-[4px_0_24px_rgba(0,0,0,0.5)] dim:shadow-[4px_0_24px_rgba(0,0,0,0.5)]"
           )}
         >
@@ -110,8 +112,8 @@ export const Sidebar = ({ isCollapsed, toggleSidebar, className, sessions = [], 
             {/* Header */}
             <div className="p-5 pb-3 flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <div className="w-6 h-6 rounded bg-gradient-to-br from-[#c084fc] to-[#7e22ce] flex items-center justify-center text-white text-xs shadow-lg shadow-purple-900/20">
-                  ✦
+                <div className="w-6 h-6 flex items-center justify-center">
+                  <img src="/sudharshan prabhu.svg" alt="Sudharshan prabhu" className="w-full h-full object-contain dark:invert-0 invert" />
                 </div>
                 <h1 className="font-semibold text-[15px] tracking-wide text-zinc-900 dark:text-gray-100 dim:text-white transition-colors">Spectral AI</h1>
               </div>
@@ -170,14 +172,30 @@ export const Sidebar = ({ isCollapsed, toggleSidebar, className, sessions = [], 
               )}
             </div>
 
+            <div className="px-3 pb-3">
+              <button
+                onClick={onOpenFiles}
+                className="w-full flex items-center gap-3 text-[14px] p-2.5 rounded-lg transition-all group hover:bg-zinc-200/50 dark:hover:bg-[#111114] dim:hover:bg-white/5 text-zinc-700 dark:text-gray-300 dim:text-gray-300"
+              >
+                <FolderOpen className="w-4 h-4 text-zinc-400 group-hover:text-purple-500 transition-colors" />
+                <span className="font-medium group-hover:text-zinc-900 dark:group-hover:text-white transition-colors">Workspace Files</span>
+              </button>
+            </div>
+
             {/* User Profile */}
             <div className="p-4 border-t border-black/5 dark:border-[#26262b] dim:border-white/5 bg-zinc-100/50 dark:bg-[#0a0a0c] dim:bg-black/20 hover:bg-zinc-200/50 dark:hover:bg-[#111114] dim:hover:bg-black/40 cursor-pointer transition-colors mt-auto">
               <div className="flex items-center justify-between w-full">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-purple-100 dark:bg-[#1e122b] dim:bg-[#1e122b] flex items-center justify-center text-[#c084fc] text-xs font-bold border border-purple-200 dark:border-[#3b2354] dim:border-[#3b2354]">US</div>
-                  <div className="flex flex-col items-start">
-                    <span className="text-[13px] font-medium text-zinc-900 dark:text-gray-200 dim:text-white transition-colors">User Session</span>
-                    <span className="text-[11px] text-zinc-500 dark:text-gray-500 dim:text-gray-400 transition-colors">Connected</span>
+                  <div className="w-8 h-8 rounded-full bg-purple-100 dark:bg-[#1e122b] dim:bg-[#1e122b] flex items-center justify-center text-[#c084fc] text-xs font-bold border border-purple-200 dark:border-[#3b2354] dim:border-[#3b2354]">LS</div>
+                  <div className="flex flex-col items-start gap-0.5">
+                    <span className="text-[13px] font-mono font-medium text-zinc-900 dark:text-gray-200 dim:text-white transition-colors tracking-tight">Live Session v1.0</span>
+                    <div className="flex items-center gap-2">
+                      <span className="relative flex h-1.5 w-1.5">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#4ade80] opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#22c55e] shadow-[0_0_6px_#22c55e]"></span>
+                      </span>
+                      <span className="text-[11px] font-mono text-green-600 dark:text-[#4ade80] dim:text-[#4ade80] font-medium transition-colors drop-shadow-[0_0_5px_rgba(74,222,128,0.3)]">Connected</span>
+                    </div>
                   </div>
                 </div>
                 <MoreHorizontal className="w-4 h-4 text-zinc-400 dark:text-gray-500 dim:text-gray-500" />

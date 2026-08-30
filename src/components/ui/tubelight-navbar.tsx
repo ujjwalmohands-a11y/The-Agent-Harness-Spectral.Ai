@@ -14,10 +14,12 @@ export interface NavItem {
 interface NavBarProps {
   items: NavItem[]
   className?: string
+  activeTab?: string
 }
 
-export function NavBar({ items, className }: NavBarProps) {
-  const [activeTab, setActiveTab] = useState(items[0].name)
+export function NavBar({ items, className, activeTab: externalActiveTab }: NavBarProps) {
+  const [localActiveTab, setLocalActiveTab] = useState(items[0].name)
+  const activeTab = externalActiveTab !== undefined ? externalActiveTab : localActiveTab
   const [isMobile, setIsMobile] = useState(false)
 
   useEffect(() => {
@@ -51,7 +53,7 @@ export function NavBar({ items, className }: NavBarProps) {
                   e.preventDefault();
                   item.onClick();
                 }
-                setActiveTab(item.name)
+                setLocalActiveTab(item.name)
               }}
               className={cn(
                 "relative cursor-pointer text-sm font-semibold px-6 py-2 rounded-full transition-colors",
