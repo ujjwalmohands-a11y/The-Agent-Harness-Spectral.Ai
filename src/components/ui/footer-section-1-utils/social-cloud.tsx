@@ -17,7 +17,7 @@ const LinkedinIcon = (props: React.SVGProps<SVGSVGElement>) => (
 );
 
 const teamMembers = [
-  { name: "Manish", avatar: "/team-member-1.png", github: "https://github.com/Dxt-zester", linkedin: "#" },
+  { name: "Manish", avatar: "/team-member-1.png", github: "https://github.com/Dxt-zester", linkedin: "https://www.linkedin.com/in/manish-kumar-sahu-024972370?utm_source=share_via&utm_content=profile&utm_medium=member_android" },
   { name: "Soum", avatar: "/team-member-2.png", github: "https://github.com/SomMishra-alt", linkedin: "https://in.linkedin.com/in/soumyaranjan-misra-6983793a6" },
   { name: "Ujjwal Mohan", avatar: "/team-member-3.png", github: "https://github.com/ujjwalmohands-a11y", linkedin: "https://www.linkedin.com/in/ujjwalmohands/" },
   { name: "Aryan", avatar: "/team-member-4.png", github: "https://github.com/aryangupta0003245-dotcom", linkedin: "https://www.linkedin.com/in/aryan-gupta-059120381/" },
