@@ -1,4 +1,4 @@
-# 🚀 Approval-Gated Assistant: Quick Start Guide
+# 🚀 Spectral AI: Quick Start Guide
 
 Welcome to the **Approval-Gated Assistant**! This guide is designed to help you get this powerful, human-in-the-loop AI agent up and running on your local machine from scratch. 
 
@@ -96,7 +96,7 @@ With the TrueForge backend running, it's time to start the frontend user interfa
 1. Open a **new** terminal window (leave the backend running in the first one).
 2. Navigate to the root directory of your cloned repository:
    ```bash
-   cd approval-gated-assistant
+   cd The-Agent-Harness
    ```
 3. Create the frontend environment variable file:
    ```bash
